@@ -15,9 +15,10 @@ pub struct Options {
 }
 
 pub fn parse_options(arguments: Vec[string], root: string) -> Result[Options, string] {
+    let checkout = path::parent(path::parent(root).unwrap_or(root)).unwrap_or(root);
     let mut options = Options {
         selected: Vec::new(),
-        goml: path::join(root, "stage2/bin/goml"),
+        goml: path::join(checkout, "goml-dev/stage2/bin/goml"),
         registry_only: false,
         race: true,
         list: false,
@@ -67,7 +68,8 @@ pub fn parse_options(arguments: Vec[string], root: string) -> Result[Options, st
 pub fn repository_root(start: string) -> Result[string, string] {
     let mut current = path::absolute_structured(start).map_err(|error| error.to_string())?;
     loop {
-        if fs::is_file(path::join(current, "ecosystem/verification/goml.toml")) {
+        if path::file_name(current).unwrap_or("") == "verification"
+            && fs::is_file(path::join(current, "goml.toml")) {
             return Result::Ok(current);
         }
         match path::parent(current) {
@@ -83,7 +85,7 @@ pub fn repository_root(start: string) -> Result[string, string] {
 }
 
 pub fn library_root(root: string) -> Result[string, string] {
-    let default = path::join(path::parent(root).unwrap_or(root), "gomlang");
+    let default = path::parent(root).unwrap_or(root);
     let selected = env::var_structured("GOMLANG_LIBRARIES").unwrap_or(default);
     if selected == "" {
         return Result::Err("GOMLANG_LIBRARIES cannot be empty");
@@ -109,7 +111,7 @@ fn execute() -> Result[(), string] {
         return Result::Ok(());
     }
     let libraries = library_root(root)?;
-    let home = registry_snapshot(libraries, path::join(root, "ecosystem"))?;
+    let home = registry_snapshot(libraries, root)?;
     if options.registry_only {
         io::println(home);
         return Result::Ok(());

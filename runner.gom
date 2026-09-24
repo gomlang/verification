@@ -145,19 +145,12 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
     string,
 ] {
     io::println("Verifying " + name);
-    let ecosystem = path::join(context.root, "ecosystem");
-    let library = if name == "explorer" {
-        path::join(ecosystem, "examples/explorer")
-    } else if name == "goml_stats" {
-        path::join(ecosystem, name)
-    } else {
-        path::join(context.libraries, name)
-    };
+    let library = path::join(context.libraries, name);
     let single = name == "goml_stats" || name == "explorer";
     let consumer = if single {
         library
     } else {
-        path::join(ecosystem, "consumers/" + name)
+        path::join(library, "consumer")
     };
     let executable = if name == "goml_stats" {
         "cmd/goml_stats/goml_stats"
@@ -345,7 +338,7 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
     (),
     string,
 ] {
-    let logs = path::join(root, "ecosystem/_artifact/verification");
+    let logs = path::join(root, "_artifact/verification");
     fs::create_dir_all(logs).map_err(|error| error.to_string())?;
     let context = Verification { root, libraries, home, goml: options.goml, records: Vec::new() };
     let mut result: Result[(), string] = Result::Ok(());
@@ -353,29 +346,6 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
         result = verify_module(context, name, options.race, path::join(logs, name));
         if result.is_err() {
             break;
-        }
-    }
-    if result.is_ok() && options.selected.len() == modules().len() + 2 {
-        for name in Vec::from_array(
-            ["unit_identity", "erased_generic", "specialized_static", "ffi_error_alias"],
-        ) {
-            let directory = path::join(root, "ecosystem/repros/" + name);
-            for command in Vec::from_array(["check", "build", "run"]) {
-                result = driver(
-                    context,
-                    Vec::from_array([command]),
-                    directory,
-                    "",
-                    path::join(logs, "repros/" + name + "/" + command + ".log"),
-                    false,
-                ).map(|_| ());
-                if result.is_err() {
-                    break;
-                }
-            }
-            if result.is_err() {
-                break;
-            }
         }
     }
     let report = json::object(

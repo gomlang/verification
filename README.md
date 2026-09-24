@@ -1,14 +1,15 @@
 # Native ecosystem verification
 
-This standalone GoML module owns the local ecosystem test runner, atomic private
+This standalone GoML repository owns the local ecosystem test runner, atomic private
 registry snapshots, race and SIMD checks, and Linux PTY sessions. The
 `reference` package supplies test fixture decoding, structural JSON comparisons
 and an independent VT screen model. It depends only on the standard library.
-The libraries are independent repositories in the sibling `../gomlang/` directory
+The libraries and their consumers are sibling repositories in `~/git/gomlang/`
 by default. Set `GOMLANG_LIBRARIES` to select another library directory; native
-Go consumers with local `replace` directives use the sibling layout.
+Go consumers with local `replace` directives use the sibling layout. The driver
+uses the development toolchain in `../../goml-dev/stage2/bin` by default.
 
-From the repository root:
+From this repository root:
 
 ```sh
 just ecosystem-test
@@ -19,7 +20,7 @@ just ecosystem-test --list
 ```
 
 No module arguments selects all libraries registered in `modules()` and their separate consumers,
-`goml_stats`, Explorer and four compiler regression projects. Each selected
+`goml_stats` and Explorer. Each selected
 module must exist. The runner checks formatting, builds consumers before tests,
 runs library and consumer `#[test]` suites, verifies cached build fingerprints
 and executes smoke checks. Native PTY checks cover terminal, tui, prompt,
@@ -33,7 +34,7 @@ tests where applicable. `--no-race` explicitly skips this additional pass.
 Individual test deadlines are 300 seconds; command deadlines are 600 seconds.
 Failures write captured output and return a nonzero status. The final JSON
 report records success, selected modules, registry identity, command durations,
-exit codes and log paths under `ecosystem/_artifact/verification/`.
+exit codes and log paths under `_artifact/verification/`.
 `GOML_VERIFY_REPORT` can select a different JSON report path when running disjoint
 module batches concurrently.
 
@@ -49,12 +50,11 @@ To run an individual consumer manually, first build this runner and obtain its
 private registry path:
 
 ```sh
-cd ecosystem/verification
-../../stage2/bin/goml build
+../../goml-dev/stage2/bin/goml build
 export GOML_HOME="$(_artifact/bin/verification --registry-only)"
-cd ../consumers/color
-../../../stage2/bin/goml build
-../../../stage2/bin/goml test
+cd ../color/consumer
+../../../goml-dev/stage2/bin/goml build
+../../../goml-dev/stage2/bin/goml test
 ```
 
 The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
@@ -71,8 +71,7 @@ model tests also check fragmented terminal sequences, erased password history
 and cleanup when starting a PTY child fails:
 
 ```sh
-cd ecosystem/verification
-../../stage2/bin/goml test
+../../goml-dev/stage2/bin/goml test
 ```
 
 These commands are local development tools; no ecosystem CI job is installed.

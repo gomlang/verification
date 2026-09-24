@@ -172,6 +172,26 @@ fn registry_skips_symlinks_and_keeps_binary_sources() -> () {
 }
 
 #[test]
+fn registry_excludes_nested_consumer_module() -> () {
+    let root = fixture();
+    let consumer = path::join(root, "one/consumer");
+    testing::assert_ok(fs::create_dir_all(consumer));
+    testing::assert_ok(
+        fs::write_file_structured(
+            path::join(consumer, "goml.toml"),
+            "[module]\npath = \"consumer::one\"\n",
+        ),
+    );
+    let captured = testing::expect_ok(
+        verify::capture_modules(root, Vec::from_array(["one", "two"])),
+        "capture modules",
+    );
+    let home = testing::expect_ok(verify::publish_snapshot(root, captured), "publish snapshot");
+    testing::assert(!fs::exists(path::join(home, "cache/registry/ecosystem/one/0.1.0/consumer")));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn command_errors_are_recorded_and_options_reject_unknown_names() -> () {
     testing::assert_err(verify::parse_options(Vec::from_array(["--goml"]), "/repo"));
     testing::assert_err(verify::parse_options(Vec::from_array(["misspelled"]), "/repo"));

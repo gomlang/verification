@@ -94,7 +94,10 @@ fn ignored(name: string) -> bool {
     name == "_artifact" || name == "_bootstrap" || name == ".git" || name == "__pycache__"
 }
 
-fn capture_directory(root: string, relative: string, output: Vec[SourceFile]) -> Result[(), string] {
+fn capture_directory(root: string, relative: string, output: Vec[SourceFile], skip_consumer: bool) -> Result[
+    (),
+    string,
+] {
     let names = fs::read_dir_names_structured(path::join(root, relative)).map_err(
         |error| error.to_string(),
     )?;
@@ -108,7 +111,7 @@ fn capture_directory(root: string, relative: string, output: Vec[SourceFile]) ->
         },
     );
     for name in names {
-        if ignored(name) {
+        if ignored(name) || (skip_consumer && relative == "" && name == "consumer") {
             continue;
         }
         let child = if relative == "" {
@@ -122,7 +125,7 @@ fn capture_directory(root: string, relative: string, output: Vec[SourceFile]) ->
             continue;
         }
         if metadata.file_type().is_dir() {
-            capture_directory(root, child, output)?;
+            capture_directory(root, child, output, skip_consumer)?;
         } else if metadata.file_type().is_file() {
             output.push(
                 SourceFile {
@@ -142,7 +145,7 @@ pub fn capture_modules(root: string, names: Vec[string]) -> Result[Vec[CapturedM
             return Result::Err("invalid module directory: " + name);
         }
         let files = Vec::new();
-        capture_directory(path::join(root, name), "", files)?;
+        capture_directory(path::join(root, name), "", files, true)?;
         let mut manifest = "";
         for file in files {
             if file.name == "goml.toml" {
@@ -227,15 +230,15 @@ pub fn publish_snapshot(root: string, captured: Vec[CapturedModule]) -> Result[s
     Result::Ok(home)
 }
 
-pub fn registry_snapshot(libraries: string, ecosystem: string) -> Result[string, string] {
-    let captured = capture_modules(libraries, modules())?;
-    captured.extend(capture_modules(ecosystem, Vec::from_array(["verification"]))?);
-    publish_snapshot(ecosystem, captured)
+pub fn registry_snapshot(libraries: string, root: string) -> Result[string, string] {
+    let names = modules();
+    names.push("verification");
+    publish_snapshot(root, capture_modules(libraries, names)?)
 }
 
 pub fn artifact_fingerprint(directory: string) -> Result[string, string] {
     let files = Vec::new();
-    capture_directory(directory, "", files)?;
+    capture_directory(directory, "", files, false)?;
     let mut value = "";
     for file in files {
         if !path::file_name(file.name).unwrap_or("").starts_with(".") {
