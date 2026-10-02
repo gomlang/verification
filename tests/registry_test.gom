@@ -172,14 +172,14 @@ fn registry_skips_symlinks_and_keeps_binary_sources() -> () {
 }
 
 #[test]
-fn registry_excludes_nested_consumer_module() -> () {
+fn registry_excludes_nested_downstream_module() -> () {
     let root = fixture();
-    let consumer = path::join(root, "one/consumer");
-    testing::assert_ok(fs::create_dir_all(consumer));
+    let downstream = path::join(root, "one/testdata/downstream/native");
+    testing::assert_ok(fs::create_dir_all(downstream));
     testing::assert_ok(
         fs::write_file_structured(
-            path::join(consumer, "goml.toml"),
-            "[module]\npath = \"consumer::one\"\n",
+            path::join(downstream, "goml.toml"),
+            "[module]\npath = \"downstream::one\"\n",
         ),
     );
     let captured = testing::expect_ok(
@@ -187,7 +187,11 @@ fn registry_excludes_nested_consumer_module() -> () {
         "capture modules",
     );
     let home = testing::expect_ok(verify::publish_snapshot(root, captured), "publish snapshot");
-    testing::assert(!fs::exists(path::join(home, "cache/registry/ecosystem/one/0.1.0/consumer")));
+    testing::assert(
+        !fs::exists(
+            path::join(home, "cache/registry/ecosystem/one/0.1.0/testdata/downstream/native"),
+        ),
+    );
     testing::assert_ok(fs::remove_dir_all(root));
 }
 
