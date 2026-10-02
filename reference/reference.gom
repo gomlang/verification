@@ -27,6 +27,11 @@ pub fn text(value: json::Value) -> string {
 }
 
 pub fn load_text(path: string) -> string {
+    let path = if fs::is_dir("examples/basic") {
+        "examples/basic/" + path
+    } else {
+        path
+    };
     let packed = bytes::Bytes::new();
     let single = path + ".gz";
     if fs::is_file(single) {
@@ -163,7 +168,15 @@ pub fn multiset(actual: Vec[json::Value], expected: Vec[json::Value], label: str
 }
 
 pub fn binary(name: string) -> string {
-    env::var_structured("GOML_VERIFY_BINARY").unwrap_or("_artifact/bin/" + name)
+    if let Ok(binary) = env::var_structured("GOML_VERIFY_BINARY") {
+        return binary
+    }
+    let example = "_artifact/bin/examples/basic/basic";
+    if fs::is_file(example) {
+        example
+    } else {
+        "_artifact/bin/" + name
+    }
 }
 
 pub fn output(name: string, argument: string, input: string) -> Result[process::Output, string] {

@@ -103,7 +103,7 @@ fn execute() -> Result[(), string] {
     let options = parse_options(arguments.slice(1, arguments.len()).to_vec(), root)?;
     if options.list {
         io::println(
-            "Usage: just ecosystem-test [--goml PATH] [--no-race] [MODULE...]\nNative GoML tests, consumer builds, cache stability, PTY and race checks.\n--registry-only prints the isolated registry GOML_HOME.",
+            "Usage: just ecosystem-test [--goml PATH] [--no-race] [MODULE...]\nNative GoML tests, example and downstream verification, cache stability, PTY and race checks.\n--registry-only prints the isolated registry GOML_HOME.",
         );
         for name in options.selected {
             io::println(name);

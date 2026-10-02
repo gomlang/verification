@@ -13,12 +13,12 @@ fn simd_field(value: json::Value, name: string) -> Result[json::Value, string] {
     json::field(value, name).ok_or("missing SIMD metadata field: " + name)
 }
 
-pub fn verify_simd(context: Verification, consumer: string, binary: string, logs: string) -> Result[
+pub fn verify_simd(context: Verification, sample: string, binary: string, logs: string) -> Result[
     (),
     string,
 ] {
     let source = fs::read_file_structured(
-        path::join(consumer, "_artifact/build/pkg/consumer/ndarray/goml_generated.go"),
+        path::join(sample, "_artifact/build/pkg/ecosystem/ndarray/examples/basic/goml_generated.go"),
     ).map_err(|error| error.to_string())?;
     let marker = "const _goml_simd_native = ";
     let mut metadata = Option::None;
@@ -67,22 +67,31 @@ pub fn verify_simd(context: Verification, consumer: string, binary: string, logs
     let reports = Vec::new();
     for mode in Vec::from_array(["native", "sse2", "scalar"]) {
         let target = if mode == "native" {
-            path::join(consumer, "_artifact")
+            path::join(sample, "_artifact")
         } else {
-            path::join(consumer, "_artifact/simd-" + mode)
+            path::join(sample, "_artifact/simd-" + mode)
         };
         let selected_binary = if mode == "native" {
             binary
         } else {
-            path::join(target, "bin/ndarray")
+            path::join(target, "bin/examples/basic/basic")
         };
         if mode != "native" {
             run_command(
                 context,
                 Vec::from_array(
-                    ["env", "GOML_SIMD=" + mode, context.goml, "build", "--target-dir", target],
+                    [
+                        "env",
+                        "GOML_SIMD=" + mode,
+                        context.goml,
+                        "build",
+                        "--example",
+                        "basic",
+                        "--target-dir",
+                        target,
+                    ],
                 ),
-                consumer,
+                sample,
                 selected_binary,
                 path::join(logs, "simd-" + mode + "-build.log"),
                 false,
@@ -95,13 +104,15 @@ pub fn verify_simd(context: Verification, consumer: string, binary: string, logs
                         "GOML_SIMD=" + mode,
                         context.goml,
                         "test",
+                        "--example",
+                        "basic",
                         "--target-dir",
                         target,
                         "--timeout",
                         "180s",
                     ],
                 ),
-                consumer,
+                sample,
                 selected_binary,
                 path::join(logs, "simd-" + mode + "-tests.log"),
                 false,
@@ -110,7 +121,7 @@ pub fn verify_simd(context: Verification, consumer: string, binary: string, logs
         let table = run_command(
             context,
             Vec::from_array(["go", "tool", "nm", selected_binary]),
-            consumer,
+            sample,
             selected_binary,
             path::join(logs, "simd-" + mode + "-symbols.log"),
             false,
@@ -143,7 +154,7 @@ pub fn verify_simd(context: Verification, consumer: string, binary: string, logs
         run_command(
             context,
             Vec::from_array([selected_binary]),
-            consumer,
+            sample,
             selected_binary,
             path::join(logs, "simd-" + mode + "-run.log"),
             false,

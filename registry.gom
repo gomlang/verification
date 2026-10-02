@@ -94,7 +94,7 @@ fn ignored(name: string) -> bool {
     name == "_artifact" || name == "_bootstrap" || name == ".git" || name == "__pycache__"
 }
 
-fn capture_directory(root: string, relative: string, output: Vec[SourceFile], skip_consumer: bool) -> Result[
+fn capture_directory(root: string, relative: string, output: Vec[SourceFile], skip_modules: bool) -> Result[
     (),
     string,
 ] {
@@ -111,7 +111,7 @@ fn capture_directory(root: string, relative: string, output: Vec[SourceFile], sk
         },
     );
     for name in names {
-        if ignored(name) || (skip_consumer && relative == "" && name == "consumer") {
+        if ignored(name) {
             continue;
         }
         let child = if relative == "" {
@@ -125,7 +125,10 @@ fn capture_directory(root: string, relative: string, output: Vec[SourceFile], sk
             continue;
         }
         if metadata.file_type().is_dir() {
-            capture_directory(root, child, output, skip_consumer)?;
+            if skip_modules && fs::is_file(path::join(source, "goml.toml")) {
+                continue
+            }
+            capture_directory(root, child, output, skip_modules)?;
         } else if metadata.file_type().is_file() {
             output.push(
                 SourceFile {

@@ -4,10 +4,7 @@ This standalone GoML repository owns the local ecosystem test runner, atomic pri
 registry snapshots, race and SIMD checks, and Linux PTY sessions. The
 `reference` package supplies test fixture decoding, structural JSON comparisons
 and an independent VT screen model. It depends only on the standard library.
-The libraries and their consumers are sibling repositories in `~/git/gomlang/`
-by default. Set `GOMLANG_LIBRARIES` to select another library directory; native
-Go consumers with local `replace` directives use the sibling layout. The driver
-uses the development toolchain in `../../goml-dev/stage2/bin` by default.
+Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The six native fixtures in bench, llvm, redis, sql, sqlite and web retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. GoML 0.1.55 or newer and Go 1.26+ are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
 
 From this repository root:
 
@@ -17,13 +14,10 @@ just ecosystem-test color ndarray goml_stats
 just ecosystem-test --no-race terminal explorer
 just ecosystem-test --goml /path/to/goml lsp
 just ecosystem-test --list
+GOML=/path/to/goml-0.1.55/bin/goml just ecosystem-test
 ```
 
-No module arguments selects all libraries registered in `modules()` and their separate consumers,
-`goml_stats` and Explorer. Each selected
-module must exist. The runner checks formatting, builds consumers before tests,
-runs library and consumer `#[test]` suites, verifies cached build fingerprints
-and executes smoke checks. Native PTY checks cover terminal, tui, prompt,
+No module arguments selects all libraries registered in `modules()`, `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
 progress, tui_markdown and Explorer. The ndarray check also compiles SSE2 and
 scalar variants, inspects the linked kernel symbols and repeats reference tests.
 Unicode tools freshly download checksum-pinned inputs on every conformance run.
@@ -46,20 +40,21 @@ README for prerequisites.
 Reference fixtures are stored as gzip streams in one `.gz` file or sequential
 `.gz.0`, `.gz.1`, ... chunks; the test loader requires `gzip` on `PATH`.
 
-To run an individual consumer manually, first build this runner and obtain its
+To run an individual example manually, first build this runner and obtain its
 private registry path:
 
 ```sh
 ../../goml-dev/stage2/bin/goml build
 export GOML_HOME="$(_artifact/bin/verification --registry-only)"
-cd ../color/consumer
-../../../goml-dev/stage2/bin/goml build
-../../../goml-dev/stage2/bin/goml test
+cd ../color
+../../goml-dev/stage2/bin/goml run --example basic
+../../goml-dev/stage2/bin/goml test
+../../goml-dev/stage2/bin/goml verify --timeout 300s
 ```
 
 The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
 `GOML_VERIFY_BINARY` to test subprocesses. Native test helpers use local build
-paths when these variables are absent. Shared consumer dependencies are resolved
+paths when these variables are absent. Shared development dependencies are resolved
 from a content-addressed snapshot, whose files are captured once and published
 with an atomic directory rename. Concurrent publishers can only observe a
 complete index; generated directories and symbolic links are excluded.
@@ -75,3 +70,5 @@ and cleanup when starting a PTY child fails:
 ```
 
 These commands are local development tools; no ecosystem CI job is installed.
+
+`goml verify` builds and tests copied examples and explicit fixtures as independent modules. Each invocation creates a second isolated snapshot under the library target directory, with workspace resolution disabled and local requirements normalized to snapshot versions. Example test data remains beside the example; the reference helpers locate it from both ordinary module tests and materialized downstream tests. Programs are run explicitly by this runner for smoke, PTY and SIMD checks.

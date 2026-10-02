@@ -140,6 +140,27 @@ fn race_enabled(name: string) -> bool {
     ).contains(name)
 }
 
+fn native_fixture(name: string) -> bool {
+    Vec::from_array(["bench", "llvm", "redis", "sql", "sqlite", "web"]).contains(name)
+}
+
+fn example_name(name: string) -> string {
+    match name {
+        "diff" => "patch",
+        "csv" => "inventory",
+        "cli" => "parse",
+        _ => "basic",
+    }
+}
+
+fn sample_build_arguments(name: string, arguments: Vec[string]) -> Vec[string] {
+    if name != "goml_stats" && name != "explorer" && !native_fixture(name) {
+        arguments.push("--example");
+        arguments.push(example_name(name));
+    }
+    arguments
+}
+
 fn verify_module(context: Verification, name: string, race: bool, logs: string) -> Result[
     (),
     string,
@@ -147,20 +168,28 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
     io::println("Verifying " + name);
     let library = path::join(context.libraries, name);
     let single = name == "goml_stats" || name == "explorer";
-    let consumer = if single {
-        library
+    let fixture = native_fixture(name);
+    let sample = if fixture {
+        path::join(library, "testdata/downstream/native")
     } else {
-        path::join(library, "consumer")
+        library
+    };
+    let runtime_directory = if single || fixture {
+        sample
+    } else {
+        path::join(library, "examples/" + example_name(name))
     };
     let executable = if name == "goml_stats" {
         "cmd/goml_stats/goml_stats"
-    } else {
+    } else if single || fixture {
         name
+    } else {
+        "examples/" + example_name(name) + "/" + example_name(name)
     };
-    let binary = path::join(consumer, "_artifact/bin/" + executable);
+    let binary = path::join(sample, "_artifact/bin/" + executable);
     let directories = Vec::from_array([(library, "library")]);
-    if !single {
-        directories.push((consumer, "consumer"));
+    if fixture {
+        directories.push((sample, "downstream"));
     }
     for (directory, prefix) in directories {
         driver(
@@ -174,10 +203,10 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
     }
     driver(
         context,
-        Vec::from_array(["build"]),
-        consumer,
+        sample_build_arguments(name, Vec::from_array(["build"])),
+        sample,
         binary,
-        path::join(logs, "consumer-build.log"),
+        path::join(logs, "sample-build.log"),
         false,
     )?;
     for (directory, prefix) in directories {
@@ -190,14 +219,24 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
             false,
         )?;
     }
-    let generated = path::join(consumer, "_artifact/build/pkg");
+    if !single {
+        driver(
+            context,
+            Vec::from_array(["verify", "--timeout", "300s"]),
+            library,
+            binary,
+            path::join(logs, "downstream-verify.log"),
+            false,
+        )?;
+    }
+    let generated = path::join(sample, "_artifact/build/pkg");
     let before = artifact_fingerprint(generated)?;
     driver(
         context,
-        Vec::from_array(["build"]),
-        consumer,
+        sample_build_arguments(name, Vec::from_array(["build"])),
+        sample,
         binary,
-        path::join(logs, "consumer-cached-build.log"),
+        path::join(logs, "sample-cached-build.log"),
         false,
     )?;
     if before != artifact_fingerprint(generated)? {
@@ -213,16 +252,16 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
     let snapshot = run_command(
         context,
         command,
-        consumer,
+        runtime_directory,
         binary,
-        path::join(logs, "consumer-run.log"),
+        path::join(logs, "sample-run.log"),
         false,
     )?;
     if name == "explorer" {
         let repeated = run_command(
             context,
             Vec::from_array([binary, "--demo"]),
-            consumer,
+            sample,
             binary,
             path::join(logs, "snapshot-repeat.log"),
             false,
@@ -270,7 +309,7 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
         io::println("  pty: passed");
     }
     if name == "ndarray" {
-        verify_simd(context, consumer, binary, logs)?;
+        verify_simd(context, sample, binary, logs)?;
     }
     if name == "unicode_text" || name == "markdown" {
         let tools = path::join(library, "tools");
@@ -292,11 +331,14 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
         )?;
     }
     if race && race_enabled(name) {
-        let race_binary = path::join(consumer, "_artifact/race/bin/" + executable);
+        let race_binary = path::join(sample, "_artifact/race/bin/" + executable);
         driver(
             context,
-            Vec::from_array(["build", "--target-dir", "_artifact/race"]),
-            consumer,
+            sample_build_arguments(
+                name,
+                Vec::from_array(["build", "--target-dir", "_artifact/race"]),
+            ),
+            sample,
             race_binary,
             path::join(logs, "race-build.log"),
             true,
