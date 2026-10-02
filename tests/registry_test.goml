@@ -26,7 +26,7 @@ fn fixture() -> string {
             ),
         );
         testing::assert_ok(
-            fs::write_file_structured(path::join(module, "main.gom"), "package " + name + ";\n"),
+            fs::write_file_structured(path::join(module, "main.goml"), "package " + name + ";\n"),
         );
         testing::assert_ok(
             fs::write_file_structured(path::join(module, "_artifact/ignored"), "generated output"),
@@ -50,7 +50,7 @@ fn check_snapshot(home: string, one_source: string) -> () {
     for name in Vec::from_array(["one", "two"]) {
         let directory = path::join(registry, "ecosystem/" + name + "/0.1.0");
         let source = testing::expect_ok(
-            fs::read_file_structured(path::join(directory, "main.gom")),
+            fs::read_file_structured(path::join(directory, "main.goml")),
             "captured source",
         );
         testing::assert_eq(
@@ -109,7 +109,7 @@ fn snapshot_hash_and_sources_use_the_same_captured_bytes() -> () {
     let names = Vec::from_array(["one", "two"]);
     let captured = testing::expect_ok(verify::capture_modules(root, names), "capture modules");
     testing::assert_ok(
-        fs::write_file_structured(path::join(root, "one/main.gom"), "package changed;\n"),
+        fs::write_file_structured(path::join(root, "one/main.goml"), "package changed;\n"),
     );
     let first = testing::expect_ok(
         verify::publish_snapshot(root, captured),
