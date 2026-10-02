@@ -106,6 +106,7 @@ fn race_enabled(name: string) -> bool {
             "redis",
             "pipeline",
             "sqlite",
+            "sql",
             "tempfile",
             "notify",
             "walkdir",

@@ -1,0 +1,270 @@
+{
+  "ansi": {
+    "revision": "f436173a394b161ff5801a00fcea802cca2efcce",
+    "kind": "library"
+  },
+  "archive": {
+    "revision": "33a681c1222a27bca8deb79443ee4990ecb8f50d",
+    "kind": "library"
+  },
+  "asn1": {
+    "revision": "9c212f5d9a5f80d6ae502d472fd6df90966e971e",
+    "kind": "library"
+  },
+  "bench": {
+    "revision": "add452c2bfa9a5a17d29ae74f50b483b7ab11015",
+    "kind": "library"
+  },
+  "bigint": {
+    "revision": "afa2e1cfa11244d182c98195e8ea0fecefa35eb1",
+    "kind": "library"
+  },
+  "bigmath": {
+    "revision": "cfbc6107ba2657247722eec25faebdea8cc5c368",
+    "kind": "library"
+  },
+  "bitflags": {
+    "revision": "cc813fb7c412c2d1d2100c1a2efb6d362291aa2e",
+    "kind": "library"
+  },
+  "cache": {
+    "revision": "70cce86873e96a796cacdc5e46d4941e0abb24c8",
+    "kind": "library"
+  },
+  "cli": {
+    "revision": "e0510db983d015789b59e050c763bac59d907ea7",
+    "kind": "library"
+  },
+  "color": {
+    "revision": "aa752e04795c259349f449925f8972ca86ea0454",
+    "kind": "library"
+  },
+  "compress": {
+    "revision": "3d3e8e83f86c30ec21a7b56f50b25702a69e7fdd",
+    "kind": "library"
+  },
+  "config": {
+    "revision": "320303e252be4b230d99ef2a395d77fac60aab21",
+    "kind": "library"
+  },
+  "csv": {
+    "revision": "7633fba7bfd77f0b46e1c17f749b4aee6a4f3a00",
+    "kind": "library"
+  },
+  "datetime": {
+    "revision": "956f69021214f76252adab20f68cd044dd0b75fd",
+    "kind": "library"
+  },
+  "decimal": {
+    "revision": "018ef4311fe1d01f688df84018f0420f5b680a19",
+    "kind": "library"
+  },
+  "diagnostics": {
+    "revision": "02cba4b8f1b6c29c1533947af65ff1e97885a782",
+    "kind": "library"
+  },
+  "diff": {
+    "revision": "ddbd097f724e4d57cc2429f05895728dd888ca8f",
+    "kind": "library"
+  },
+  "dwarf": {
+    "revision": "8c653e1ec89e16cbfb28c65d0ac1c90db0fce970",
+    "kind": "library"
+  },
+  "ecosystem": {
+    "revision": "246d9b46badc0a70d44e0570b7c32b037d1b6236",
+    "kind": "catalog"
+  },
+  "explorer": {
+    "revision": "f3845a057369f8daeb214c66fecafa41c83ecb60",
+    "kind": "application"
+  },
+  "fuzzy": {
+    "revision": "316241000d0e6279c11fd6e2bb2783b66cecac0f",
+    "kind": "library"
+  },
+  "go_doc": {
+    "revision": "630243dec32cdb4ffa70eb6670f3de1a3157896b",
+    "kind": "library"
+  },
+  "goml_stats": {
+    "revision": "b4d330c9b99615841b853b7863ba89d04aaa1523",
+    "kind": "application"
+  },
+  "graph": {
+    "revision": "861f84c20a08b7ceb67ba8a18d715464b0652eb0",
+    "kind": "library"
+  },
+  "highlight": {
+    "revision": "0cae7a30f682c46f6348facfaa2b15e43158db93",
+    "kind": "library"
+  },
+  "html": {
+    "revision": "ecc539ea1d7f0d08c03a6b3287aeba1a382479ac",
+    "kind": "library"
+  },
+  "http": {
+    "revision": "175a752065b9915d3892fd24cd7569456adee552",
+    "kind": "library"
+  },
+  "ignore": {
+    "revision": "63bdc0f8f844dfea082afeb97f568110f688510c",
+    "kind": "library"
+  },
+  "image": {
+    "revision": "d343fc7066e1266189bb9088df50de9f5544c848",
+    "kind": "library"
+  },
+  "incremental": {
+    "revision": "0a43f544667138c2246c2e619a4077a0720152cb",
+    "kind": "library"
+  },
+  "llvm": {
+    "revision": "519155df3a31fe772e45696d23a8218261e430dd",
+    "kind": "library"
+  },
+  "logos": {
+    "revision": "1dc263a92d5a5e9152503962c79752d00573a0b7",
+    "kind": "library"
+  },
+  "lsp": {
+    "revision": "41da01d949cc8a9a189b32076843d6957da0d59f",
+    "kind": "library"
+  },
+  "mail": {
+    "revision": "a042f89b04bacb6c3de88cd137df1a6c693187ab",
+    "kind": "library"
+  },
+  "markdown": {
+    "revision": "6dc231b9e46677393b389046bd86cbbd028fa5da",
+    "kind": "library"
+  },
+  "metrics": {
+    "revision": "355046a2cb0769368927b6a9942eb1a60fcd3cbc",
+    "kind": "library"
+  },
+  "mime": {
+    "revision": "6855ea6ce094f1f9b895ed74346895904da8ea72",
+    "kind": "library"
+  },
+  "msgpack": {
+    "revision": "15a8efc86eacdd24ea05d8ca252bcbe1b8997ba2",
+    "kind": "library"
+  },
+  "ndarray": {
+    "revision": "3600a1d4fad2dc6dd90a22f1072888e22ebb6883",
+    "kind": "library"
+  },
+  "notify": {
+    "revision": "081f113dd2de6995b76efaa887973c101a92f78f",
+    "kind": "library"
+  },
+  "object": {
+    "revision": "fc3de1a65cdff36ba3a75af510853d80854165f0",
+    "kind": "library"
+  },
+  "parser": {
+    "revision": "656726142bb689bd8366c7537887db49b17f5d74",
+    "kind": "library"
+  },
+  "pipeline": {
+    "revision": "977fa1655442b0625a9c78261a44a20c48ec657a",
+    "kind": "library"
+  },
+  "progress": {
+    "revision": "ee6aa256b13eab9af2a11e93918fd87920ffeb01",
+    "kind": "library"
+  },
+  "prompt": {
+    "revision": "4c3c88a91c1521fcb61537b2b8403b5adbdecd9b",
+    "kind": "library"
+  },
+  "proptest": {
+    "revision": "00eacfd20cd977c461eae3798afdc2c501dd4778",
+    "kind": "library"
+  },
+  "redis": {
+    "revision": "9d67bbfbe086a97844b7b13257ec4f234051b540",
+    "kind": "library"
+  },
+  "regexp": {
+    "revision": "71d092194433770f905fc18f63707fa5dd702497",
+    "kind": "library"
+  },
+  "request": {
+    "revision": "98f4734db787ca0596c44251a027164f746b703e",
+    "kind": "library"
+  },
+  "rope": {
+    "revision": "06ec144e9449556aa77c5fe36027bdef743c3251",
+    "kind": "library"
+  },
+  "sql": {
+    "revision": "e35221d6e2eb4d5e33e151ccfeae00fd98aad822",
+    "kind": "library"
+  },
+  "sqlite": {
+    "revision": "c8d1f1772ec53c040687d8d1b4d7a6060c61da20",
+    "kind": "library"
+  },
+  "syntax": {
+    "revision": "d39a22ab6d448b99aae037fe47827cc83f83f24d",
+    "kind": "library"
+  },
+  "tabwriter": {
+    "revision": "a7e9f01ef89a420487ed28a5250526fb254f63b1",
+    "kind": "library"
+  },
+  "tempfile": {
+    "revision": "047a8d130fd61e96241cd925719dbfd8bf494d20",
+    "kind": "library"
+  },
+  "template": {
+    "revision": "da8c4188dae141f5885c354660cb005dbee9bfe9",
+    "kind": "library"
+  },
+  "terminal": {
+    "revision": "515d089ac577640bef3736e530a4c7a211639001",
+    "kind": "library"
+  },
+  "textproto": {
+    "revision": "0df6875f5cf56ce503abe40560f97bc485441c34",
+    "kind": "library"
+  },
+  "tracing": {
+    "revision": "c36a4f3904cad0e36617fb68e9625678685dca5e",
+    "kind": "library"
+  },
+  "tui": {
+    "revision": "927ea8f4772a82b59ade9cea56bc67c33c7f86d4",
+    "kind": "library"
+  },
+  "tui_markdown": {
+    "revision": "106cf072569d3a8e294032e31f002c1879a9010a",
+    "kind": "library"
+  },
+  "unicode_text": {
+    "revision": "3c859cb9f85896d7d42111bd4c3d43039aba23de",
+    "kind": "library"
+  },
+  "walkdir": {
+    "revision": "b2d2652d187f700ac1c69289336e3a5666990076",
+    "kind": "library"
+  },
+  "web": {
+    "revision": "5b87bb078a2a4b91cf60997902d83b53bbb9db00",
+    "kind": "library"
+  },
+  "websocket": {
+    "revision": "51a655c835c549ed8588864fddd2fd37f9f5d3ec",
+    "kind": "library"
+  },
+  "x509": {
+    "revision": "bc74697548012c22dc3c5c72742ffa737809c693",
+    "kind": "library"
+  },
+  "xml": {
+    "revision": "59dbfbf8ec0ed50772e984693b9dcff6a3bb514c",
+    "kind": "library"
+  }
+}

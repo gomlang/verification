@@ -1,0 +1,80 @@
+name: Ecosystem verification
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        type: string
+        required: true
+      verification-ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify ${{ inputs.module }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOMAXPROCS: '2'
+      GOML_BUILD_JOBS: '2'
+      GOML_TEST_JOBS: '2'
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v7
+        with:
+          path: libraries/${{ inputs.module }}
+          persist-credentials: false
+      - name: Check out verification infrastructure
+        if: inputs.module != 'verification'
+        uses: actions/checkout@v7
+        with:
+          repository: gomlang/verification
+          ref: ${{ inputs.verification-ref }}
+          path: libraries/verification
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+          cache: false
+      - name: Check CI tooling
+        run: |
+          python3 -m unittest discover -s libraries/verification/ci -p 'test_*.py'
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.11
+          actionlint -shellcheck= libraries/verification/.github/workflows/*.yml libraries/"$MODULE"/.github/workflows/ci.yml
+        env:
+          MODULE: ${{ inputs.module }}
+      - name: Prepare pinned ecosystem sources
+        run: python3 libraries/verification/ci/ecosystem.py prepare --libraries libraries --module "$MODULE"
+        env:
+          MODULE: ${{ inputs.module }}
+      - name: Install native test tools
+        run: bash libraries/verification/ci/install-native.sh "$MODULE"
+        env:
+          MODULE: ${{ inputs.module }}
+      - name: Install released GoML
+        run: python3 libraries/verification/ci/ecosystem.py install --prefix "$TOOLCHAIN_PREFIX"
+        env:
+          TOOLCHAIN_PREFIX: ${{ runner.temp }}/goml
+      - name: Download native module dependencies
+        run: python3 libraries/verification/ci/ecosystem.py native --libraries libraries --module "$MODULE"
+        env:
+          MODULE: ${{ inputs.module }}
+      - name: Verify candidate
+        run: python3 libraries/verification/ci/ecosystem.py verify --libraries libraries --module "$MODULE" --goml "$GOML"
+        env:
+          MODULE: ${{ inputs.module }}
+          GOML: ${{ runner.temp }}/goml/bin/goml
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ inputs.module }}
+          path: |
+            libraries/verification/_artifact/ci/
+            libraries/verification/_artifact/verification/
+          if-no-files-found: ignore
+          retention-days: 14

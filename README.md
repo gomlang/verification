@@ -69,6 +69,10 @@ and cleanup when starting a PTY child fails:
 ../../goml-dev/stage2/bin/goml test
 ```
 
-These commands are local development tools; no ecosystem CI job is installed.
+Every ecosystem repository also runs these checks through GitHub Actions. The
+shared [CI configuration](ci/README.md) pins the released toolchain and sibling
+repository revisions, preserves the triggering candidate, installs native test
+dependencies, and retains failure logs. Verification and catalog repositories
+run their own infrastructure and consistency checks.
 
 `goml verify` builds and tests copied examples and explicit fixtures as independent modules. Each invocation creates a second isolated snapshot under the library target directory, with workspace resolution disabled and local requirements normalized to snapshot versions. Example test data remains beside the example; the reference helpers locate it from both ordinary module tests and materialized downstream tests. Programs are run explicitly by this runner for smoke, PTY and SIMD checks.
