@@ -139,12 +139,28 @@ fn race_enabled(name: string) -> bool {
             "metrics",
             "csv",
             "bench",
+            "uuid",
+            "yaml",
+            "jwt",
+            "s3",
+            "html",
+            "image",
         ],
     ).contains(name)
 }
 
 fn native_fixture(name: string) -> bool {
     Vec::from_array(["bench", "llvm", "redis", "sql", "sqlite", "web"]).contains(name)
+}
+
+fn native_test_packages(name: string) -> Vec[string] {
+    if name == "request" {
+        Vec::from_array(["./testserver"])
+    } else if Vec::from_array(["sqlite", "llvm", "html", "image", "yaml", "jwt"]).contains(name) {
+        Vec::from_array(["./adapter"])
+    } else {
+        Vec::new()
+    }
 }
 
 fn example_name(name: string) -> string {
@@ -221,6 +237,12 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
             path::join(logs, prefix + "-tests.log"),
             false,
         )?;
+    }
+    let native_packages = native_test_packages(name);
+    if !native_packages.is_empty() {
+        let command = Vec::from_array(["go", "test", "-count=1"]);
+        command.extend(native_packages);
+        run_command(context, command, library, binary, path::join(logs, "native-tests.log"), false)?;
     }
     if !single {
         driver(
@@ -356,16 +378,9 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
                 true,
             )?;
         }
-        let packages = if name == "request" {
-            Vec::from_array(["./testserver"])
-        } else if Vec::from_array(["sqlite", "llvm"]).contains(name) {
-            Vec::from_array(["./adapter"])
-        } else {
-            Vec::new()
-        };
-        if !packages.is_empty() {
+        if !native_packages.is_empty() {
             let command = Vec::from_array(["go", "test", "-race", "-count=1"]);
-            command.extend(packages);
+            command.extend(native_packages);
             run_command(
                 context,
                 command,

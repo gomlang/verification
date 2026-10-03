@@ -107,13 +107,26 @@ def install(prefix, file=CI / "toolchain.json"):
     run([prefix / "bin/goml", "version"])
 
 
-def manifests(root):
+def source_manifests(root, filename):
+    outputs = set()
     for directory, directories, files in os.walk(root):
+        directory = Path(directory)
+        project = directory / "goml.toml"
+        if "goml.toml" in files and not project.is_symlink():
+            target = tomllib.loads(project.read_text()).get("build", {}).get("target-dir", "_artifact")
+            if not isinstance(target, str) or not target or Path(target).is_absolute() or ".." in Path(target).parts:
+                raise ValueError(f"invalid build target directory: {project}")
+            outputs.add(directory / target)
         directories[:] = sorted(name for name in directories if name not in {
-            ".git", "_artifact", "_bootstrap", "__pycache__", "node_modules",
-        })
-        if "goml.toml" in files:
-            yield Path(directory) / "goml.toml"
+            ".git", ".goml", ".cache", "_artifact", "_bootstrap", "__pycache__", "node_modules", "vendor",
+        } and not (directory / name).is_symlink() and directory / name not in outputs)
+        manifest = directory / filename
+        if filename in files and not manifest.is_symlink():
+            yield manifest
+
+
+def manifests(root):
+    return source_manifests(root, "goml.toml")
 
 
 def dependency_closure(root, module, records):
@@ -137,11 +150,10 @@ def dependency_closure(root, module, records):
 
 def native(root, module, records):
     for name in dependency_closure(root, module, records):
-        for relative in ("go.mod", "testdata/downstream/native/go.mod"):
-            manifest = root / name / relative
-            if manifest.is_file():
-                print(f"Downloading native dependencies: {name}/{relative}", flush=True)
-                run(["go", "mod", "download", "all"], cwd=manifest.parent)
+        directory = root / name
+        for manifest in source_manifests(directory, "go.mod"):
+            print(f"Downloading native dependencies: {name}/{manifest.relative_to(directory)}", flush=True)
+            run(["go", "mod", "download", "all"], cwd=manifest.parent)
 
 
 def validate_catalog(root, records, available):

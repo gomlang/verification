@@ -17,14 +17,16 @@ just ecosystem-test --list
 GOML=/path/to/goml-0.1.56/bin/goml just ecosystem-test
 ```
 
-No module arguments selects all libraries registered in `modules()`, `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
+No module arguments selects all 68 libraries registered in `modules()`, including UUID, YAML, JWT and S3, plus `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
 progress, tui_markdown and Explorer. The ndarray check also compiles SSE2 and
 scalar variants, inspects the linked kernel symbols and repeats reference tests.
 Unicode tools freshly download checksum-pinned inputs on every conformance run.
 
 Modules with concurrency checks run their suites again using `GOFLAGS=-race`
 and separate `_artifact/race/` targets. This includes declared native Go adapter
-tests where applicable. `--no-race` explicitly skips this additional pass.
+tests where applicable. Native Go unit tests also run without the race detector,
+including the HTML, image, YAML and JWT adapters. UUID generation and S3 client
+tests participate in the race pass. `--no-race` explicitly skips this additional pass.
 Individual test deadlines are 300 seconds; command deadlines are 600 seconds.
 Failures write captured output and return a nonzero status. The final JSON
 report records success, selected modules, registry identity, command durations,

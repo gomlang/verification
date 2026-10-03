@@ -15,7 +15,10 @@ local GoML installation is required. `checkouts.json` records every tested commi
 Installation verifies the archive before extraction and finalizes the toolchain
 with its own binaries. The runner uses Go 1.26 on Ubuntu 24.04. Native dependencies
 are downloaded explicitly before readonly GoML compilation, including manifests
-in dependency and downstream fixture repositories. LLVM, SQLite and shell
+in transitive dependencies, named examples and downstream fixture modules.
+Discovery skips generated directories and symbolic links; failures stop the job.
+This includes the HTML parsing/sanitization, image codec, YAML and JWT adapters.
+LLVM, SQLite and shell
 completion prerequisites are installed for their corresponding jobs.
 
 Library jobs run the existing format, test, independent downstream verification,

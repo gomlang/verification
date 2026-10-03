@@ -86,6 +86,10 @@ pub fn modules() -> Vec[string] {
             "metrics",
             "csv",
             "bench",
+            "uuid",
+            "yaml",
+            "jwt",
+            "s3",
         ],
     )
 }
