@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -80,6 +81,40 @@ class InfrastructureTests(unittest.TestCase):
         with patch.object(ecosystem, "run") as run:
             ecosystem.native(self.root, "app", self.record("app") | self.record("core") | self.record("unused"))
         self.assertEqual([call.kwargs["cwd"].name for call in run.call_args_list], ["app", "core"])
+
+    def test_native_downloads_nested_source_modules_and_skips_generated_files(self):
+        records = self.record("app") | self.record("core")
+        self.manifest("app", '[build]\ntarget-dir="build/cache"\n[dependencies]\n"ecosystem::core"="0.1.0"\n')
+        self.manifest("core", '[module]\npath="ecosystem::core"\n')
+        paths = [
+            "app/examples/basic", "app/testdata/downstream/codec", "core",
+            "app/_artifact/native", "app/_bootstrap/native", "app/node_modules/native",
+            "app/.goml/cache/registry/native", "app/.cache/native", "app/vendor/native",
+            "app/build/cache/native",
+        ]
+        for relative in paths:
+            directory = self.root / relative
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "go.mod").write_text("module example.com/native\n")
+        linked = self.root / "app/linked"
+        linked.mkdir()
+        (linked / "go.mod").symlink_to(self.root / "core/go.mod")
+        (self.root / "app/linked-directory").symlink_to(self.root / "core", target_is_directory=True)
+        with patch.object(ecosystem, "run") as run:
+            ecosystem.native(self.root, "app", records)
+        self.assertEqual(
+            [call.kwargs["cwd"].relative_to(self.root).as_posix() for call in run.call_args_list],
+            ["app/examples/basic", "app/testdata/downstream/codec", "core"],
+        )
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0], ["go", "mod", "download", "all"])
+
+    def test_native_dependency_download_failures_are_not_ignored(self):
+        self.manifest("app", '[module]\npath="ecosystem::app"\n')
+        (self.root / "app/go.mod").write_text("module example.com/app\n")
+        failure = subprocess.CalledProcessError(1, ["go", "mod", "download", "all"])
+        with patch.object(ecosystem, "run", side_effect=failure), self.assertRaises(subprocess.CalledProcessError):
+            ecosystem.native(self.root, "app", self.record("app"))
 
     def test_catalog_rejects_runner_inventory_drift(self):
         with self.assertRaisesRegex(ValueError, "runner/catalog mismatch"):
