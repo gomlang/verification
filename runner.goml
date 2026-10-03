@@ -150,7 +150,7 @@ fn race_enabled(name: string) -> bool {
 }
 
 fn native_fixture(name: string) -> bool {
-    Vec::from_array(["bench", "llvm", "redis", "sql", "sqlite", "web"]).contains(name)
+    Vec::from_array(["bench", "llvm", "redis", "sql", "sqlite", "web", "yaml"]).contains(name)
 }
 
 fn native_test_packages(name: string) -> Vec[string] {

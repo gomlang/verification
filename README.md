@@ -4,7 +4,7 @@ This standalone GoML repository owns the local ecosystem test runner, atomic pri
 registry snapshots, race and SIMD checks, and Linux PTY sessions. The
 `reference` package supplies test fixture decoding, structural JSON comparisons
 and an independent VT screen model. It depends only on the standard library.
-Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The six native fixtures in bench, llvm, redis, sql, sqlite and web retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. GoML 0.1.56 or newer and Go 1.26+ are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
+Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The seven native fixtures in bench, llvm, redis, sql, sqlite, web and yaml retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. GoML 0.1.57 or newer and Go 1.26+ are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
 
 From this repository root:
 
@@ -14,7 +14,7 @@ just ecosystem-test color ndarray goml_stats
 just ecosystem-test --no-race terminal explorer
 just ecosystem-test --goml /path/to/goml lsp
 just ecosystem-test --list
-GOML=/path/to/goml-0.1.56/bin/goml just ecosystem-test
+GOML=/path/to/goml-0.1.57/bin/goml just ecosystem-test
 ```
 
 No module arguments selects all 68 libraries registered in `modules()`, including UUID, YAML, JWT and S3, plus `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
