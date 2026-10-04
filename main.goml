@@ -5,6 +5,7 @@ use std::fs;
 use std::io;
 use std::path;
 use std::process;
+use std::toml;
 
 pub struct Options {
     pub selected: Vec[string],
@@ -63,11 +64,20 @@ pub fn parse_options(arguments: Vec[string], root: string) -> Result[Options, st
 }
 
 pub fn repository_root(start: string) -> Result[string, string] {
-    let mut current = path::absolute_structured(start).map_err(|error| error.to_string())?;
+    let mut current = resolve_directory(start)?;
     loop {
-        if path::file_name(current).unwrap_or("") == "verification"
-            && fs::is_file(path::join(current, "goml.toml")) {
-            return Result::Ok(current);
+        let manifest = path::join(current, "goml.toml");
+        if fs::is_file(manifest) {
+            let source = fs::read_file_structured(manifest).map_err(
+                |error| manifest + ": " + error.to_string(),
+            )?;
+            let document = toml::parse(source).map_err(|error| manifest + ": " + error.to_string())?;
+            let module_path = toml::field(document, "module").and_then(
+                |module| toml::field(module, "path"),
+            ).and_then(|value| toml::as_string(value));
+            if module_path == Option::Some("ecosystem::verification") {
+                return Result::Ok(current);
+            }
         }
         match path::parent(current) {
             Some(parent) => {

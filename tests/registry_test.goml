@@ -74,6 +74,42 @@ fn write_manifest(root: string, relative: string, content: string) -> () {
     testing::assert_ok(fs::write_file_structured(path::join(directory, "goml.toml"), content));
 }
 
+#[test]
+fn repository_root_uses_module_identity_in_a_renamed_checkout() -> () {
+    let root = fixture();
+    let checkout = path::join(root, "custom-verifier");
+    write_manifest(root, "custom-verifier", "[module]\npath = \"ecosystem::verification\"\n");
+    testing::assert_ok(fs::create_dir_all(path::join(checkout, "nested/work")));
+    testing::assert_eq(
+        testing::expect_ok(verify::repository_root(checkout), "renamed checkout root"),
+        checkout,
+    );
+    testing::assert_eq(
+        testing::expect_ok(
+            verify::repository_root(path::join(checkout, "nested/work")),
+            "ancestor module root",
+        ),
+        checkout,
+    );
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn repository_root_skips_same_named_directories_with_other_modules() -> () {
+    let root = fixture();
+    let checkout = path::join(root, "custom-verifier");
+    write_manifest(root, "custom-verifier", "[module]\npath = \"ecosystem::verification\"\n");
+    write_manifest(root, "custom-verifier/verification", "[module]\npath = \"example::fixture\"\n");
+    testing::assert_eq(
+        testing::expect_ok(
+            verify::repository_root(path::join(checkout, "verification")),
+            "same directory name does not identify the verifier",
+        ),
+        checkout,
+    );
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
 fn snapshot_names(home: string) -> Vec[string] {
     let content = testing::expect_ok(
         fs::read_file_structured(path::join(home, "cache/registry/index.toml")),

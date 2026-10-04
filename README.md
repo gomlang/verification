@@ -9,6 +9,10 @@ Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary exam
 `GOMLANG_LIBRARIES` and `--goml` accept relative or absolute paths with filesystem
 resolution of symbolic links and `..`. Missing or non-directory components in
 the library path are rejected even when followed by `..`.
+The runner finds its repository by the `ecosystem::verification` module declared
+in `goml.toml`, walking from the working directory through its parents. The
+checkout directory can have any name, and nested modules with other coordinates
+are skipped. Unreadable or invalid manifests report their path.
 
 From this repository root:
 
