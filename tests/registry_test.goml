@@ -241,20 +241,20 @@ fn command_errors_are_recorded_and_options_reject_unknown_names() -> () {
 #[test]
 fn expanded_libraries_are_unique_and_available_to_the_runner() -> () {
     let libraries = verify::modules();
-    testing::assert_eq(libraries.len(), 69);
+    testing::assert_eq(libraries.len(), 70);
     let unique = Vec::new();
     for name in libraries {
         testing::assert(!unique.contains(name));
         unique.push(name);
     }
-    let requested = Vec::from_array(["uuid", "yaml", "jwt", "s3", "wasm"]);
+    let requested = Vec::from_array(["uuid", "yaml", "jwt", "s3", "wasm", "goir"]);
     let options = testing::expect_ok(
         verify::parse_options(requested, "/repo"),
         "expanded library options",
     );
     testing::assert(options.selected == requested);
     let all = testing::expect_ok(verify::parse_options(Vec::new(), "/repo"), "all modules");
-    testing::assert_eq(all.selected.len(), 71);
+    testing::assert_eq(all.selected.len(), 72);
     testing::assert(all.selected.contains("goml_stats"));
     testing::assert(all.selected.contains("explorer"));
 }
