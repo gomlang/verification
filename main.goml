@@ -111,7 +111,7 @@ fn execute() -> Result[(), string] {
         return Result::Ok(());
     }
     let libraries = library_root(root)?;
-    let home = registry_snapshot(libraries, root)?;
+    let home = registry_snapshot(libraries, root, options.selected)?;
     if options.registry_only {
         io::println(home);
         return Result::Ok(());

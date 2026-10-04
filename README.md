@@ -17,7 +17,7 @@ just ecosystem-test --list
 GOML=/path/to/goml-0.1.57/bin/goml just ecosystem-test
 ```
 
-No module arguments selects all 70 libraries registered in `modules()`, including UUID, YAML, JWT, S3, the WebAssembly interpreter and goir, plus `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
+No module arguments selects all 70 libraries registered in `modules()`, including UUID, YAML, JWT, S3, the WebAssembly interpreter and goir, plus `goml_stats` and Explorer. Each selected module and its transitive dependencies must exist. A named selection supports a partial checkout: only the selected repositories and their dependencies are read. Dependencies include `[dependencies]` and `[dev-dependencies]` from root manifests and nested source modules such as native fixtures. Missing repositories fail with the selected module or referring manifest in the error; a default all-module run never silently skips missing repositories. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
 progress, tui_markdown and Explorer. The ndarray check also compiles SSE2 and
 scalar variants, inspects the linked kernel symbols and repeats reference tests.
 Unicode tools freshly download checksum-pinned inputs on every conformance run.
@@ -47,7 +47,7 @@ private registry path:
 
 ```sh
 ../../goml-dev/stage2/bin/goml build
-export GOML_HOME="$(_artifact/bin/verification --registry-only)"
+export GOML_HOME="$(_artifact/bin/verification --registry-only color)"
 cd ../color
 ../../goml-dev/stage2/bin/goml run --example basic
 ../../goml-dev/stage2/bin/goml test
@@ -59,10 +59,16 @@ The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
 paths when these variables are absent. Shared development dependencies are resolved
 from a content-addressed snapshot, whose files are captured once and published
 with an atomic directory rename. Concurrent publishers can only observe a
-complete index; generated directories and symbolic links are excluded.
+complete index. The snapshot contains the selected ecosystem libraries and their
+transitive dependencies; application selections such as Explorer contribute their
+dependencies without becoming registry packages. Generated directories, manifest
+`[build].target-dir` outputs and symbolic links are excluded from both dependency
+discovery and captured sources. `--registry-only` accepts the same module selection
+as an ordinary run; omitting it requires the complete ecosystem checkout.
 
 The runner's own regression suite covers publication races, captured source
-consistency, coordinate validation, binary data, symlink exclusion, command
+consistency, partial checkouts, transitive and native fixture dependencies,
+missing dependency diagnostics, coordinate validation, binary data, symlink exclusion, command
 failure logs, path delimiters, UTF-8 failures and option parsing. The reference
 model tests also check fragmented terminal sequences, erased password history
 and cleanup when starting a PTY child fails:

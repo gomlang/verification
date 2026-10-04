@@ -65,6 +65,242 @@ fn check_snapshot(home: string, one_source: string) -> () {
     }
 }
 
+fn write_manifest(root: string, relative: string, content: string) -> () {
+    let directory = path::join(root, relative);
+    testing::assert_ok(fs::create_dir_all(directory));
+    testing::assert_ok(fs::write_file_structured(path::join(directory, "goml.toml"), content));
+}
+
+fn snapshot_names(home: string) -> Vec[string] {
+    let content = testing::expect_ok(
+        fs::read_file_structured(path::join(home, "cache/registry/index.toml")),
+        "registry index",
+    );
+    let document = testing::expect_ok(toml::parse(content), "registry index TOML");
+    let entries = testing::expect_some(
+        toml::field(document, "modules").and_then(|value| toml::as_table(value)),
+        "registry modules",
+    );
+    let names = Vec::new();
+    for (name, _) in entries {
+        names.push(name);
+    }
+    names
+}
+
+#[test]
+fn selected_snapshot_only_requires_selected_checkout_and_dependencies() -> () {
+    let root = fixture();
+    let first = testing::expect_ok(
+        verify::registry_snapshot(root, root, Vec::from_array(["one"])),
+        "snapshot a partial checkout",
+    );
+    testing::assert(snapshot_names(first) == Vec::from_array(["ecosystem::one"]));
+    write_manifest(root, "two", "invalid TOML in an unrelated checkout");
+    let second = testing::expect_ok(
+        verify::registry_snapshot(root, root, Vec::from_array(["one", "one"])),
+        "unrelated checkouts and duplicate selections do not affect a snapshot",
+    );
+    testing::assert_eq(first, second);
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn snapshot_follows_transitive_dev_and_nested_fixture_dependencies() -> () {
+    let root = fixture();
+    write_manifest(
+        root,
+        "one",
+        "[module]\npath = \"ecosystem::one\"\n[dependencies]\n\"ecosystem::two\" = \"0.1.0\"\n",
+    );
+    write_manifest(
+        root,
+        "two",
+        "[module]\npath = \"ecosystem::two\"\n[dev-dependencies]\n\"ecosystem::one\" = \"0.1.0\"\n",
+    );
+    write_manifest(
+        root,
+        "two/testdata/downstream/native",
+        "[module]\npath = \"downstream::native\"\n[dev-dependencies]\n\"ecosystem::three\" = \"0.1.0\"\n",
+    );
+    write_manifest(root, "three", "[module]\npath = \"ecosystem::three\"\n");
+    let home = testing::expect_ok(
+        verify::registry_snapshot(root, root, Vec::from_array(["one"])),
+        "snapshot transitive dependencies and cycles",
+    );
+    testing::assert(
+        snapshot_names(home)
+            == Vec::from_array(["ecosystem::one", "ecosystem::three", "ecosystem::two"]),
+    );
+    testing::assert(
+        !fs::exists(
+            path::join(home, "cache/registry/ecosystem/two/0.1.0/testdata/downstream/native"),
+        ),
+    );
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn snapshot_reports_missing_selection_and_dependency_sources() -> () {
+    let root = fixture();
+    let error = testing::expect_err(
+        verify::registry_snapshot(root, root, Vec::from_array(["absent"])),
+        "missing selection",
+    );
+    testing::assert(error.contains("selected module absent"));
+    write_manifest(
+        root,
+        "one/testdata/downstream/native",
+        "[dependencies]\n\"ecosystem::absent\" = \"0.1.0\"\n",
+    );
+    let error = testing::expect_err(
+        verify::registry_snapshot(root, root, Vec::from_array(["one"])),
+        "missing fixture dependency",
+    );
+    testing::assert(error.contains("dependency absent"));
+    testing::assert(error.contains("one/testdata/downstream/native/goml.toml"));
+    testing::assert(!fs::exists(path::join(root, "_artifact/registry-snapshots")));
+    let all = testing::expect_ok(verify::parse_options(Vec::new(), root), "default selection");
+    testing::assert_err(verify::registry_snapshot(root, root, all.selected));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn consumer_selection_discovers_dependencies_without_publishing_consumer() -> () {
+    let root = fixture();
+    write_manifest(
+        root,
+        "explorer",
+        "[module]\npath = \"example::explorer\"\n[dependencies]\n\"ecosystem::one\" = \"0.1.0\"\n",
+    );
+    let home = testing::expect_ok(
+        verify::registry_snapshot(root, root, Vec::from_array(["explorer"])),
+        "consumer dependencies",
+    );
+    testing::assert(snapshot_names(home) == Vec::from_array(["ecosystem::one"]));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn dependency_discovery_and_snapshot_exclude_generated_directories_and_symlinks() -> () {
+    let root = fixture();
+    write_manifest(
+        root,
+        "one",
+        "[module]\npath = \"ecosystem::one\"\n[build]\ntarget-dir = \"build/cache\"\n",
+    );
+    write_manifest(
+        root,
+        "one/testdata/downstream/native",
+        "[module]\npath = \"downstream::native\"\n[build]\ntarget-dir = \"generated\"\n[dependencies]\n\"ecosystem::two\" = \"0.1.0\"\n",
+    );
+    for relative in Vec::from_array(
+        [
+            "_artifact",
+            "_bootstrap",
+            ".git",
+            "__pycache__",
+            ".goml",
+            ".cache",
+            "node_modules",
+            "vendor",
+            "build/cache",
+            "testdata/downstream/native/generated",
+        ],
+    ) {
+        write_manifest(root, "one/" + relative + "/ignored-manifest", "invalid generated TOML");
+    }
+    write_manifest(root, "external", "[dependencies]\n\"ecosystem::missing\" = \"0.1.0\"\n");
+    testing::assert_ok(
+        fs::symbolic_link(path::join(root, "external"), path::join(root, "one/linked-directory")),
+    );
+    testing::assert_ok(fs::create_dir_all(path::join(root, "one/linked-manifest")));
+    testing::assert_ok(
+        fs::write_file_structured(
+            path::join(root, "one/linked-manifest/data.txt"),
+            "source fixture",
+        ),
+    );
+    testing::assert_ok(
+        fs::symbolic_link(
+            path::join(root, "external/goml.toml"),
+            path::join(root, "one/linked-manifest/goml.toml"),
+        ),
+    );
+    let home = testing::expect_ok(
+        verify::registry_snapshot(root, root, Vec::from_array(["one"])),
+        "ignore generated and linked manifests",
+    );
+    testing::assert(snapshot_names(home) == Vec::from_array(["ecosystem::one", "ecosystem::two"]));
+    let directory = path::join(home, "cache/registry/ecosystem/one/0.1.0");
+    testing::assert_eq(
+        testing::expect_ok(
+            fs::read_file_structured(path::join(directory, "linked-manifest/data.txt")),
+            "files beside a linked manifest remain source files",
+        ),
+        "source fixture",
+    );
+    for relative in Vec::from_array(
+        [
+            "_artifact",
+            "_bootstrap",
+            ".git",
+            "__pycache__",
+            ".goml",
+            ".cache",
+            "node_modules",
+            "vendor",
+            "build/cache",
+            "linked-directory",
+            "linked-manifest/goml.toml",
+        ],
+    ) {
+        testing::assert(!fs::exists(path::join(directory, relative)));
+    }
+    let reordered = testing::expect_ok(
+        verify::registry_snapshot(root, root, Vec::from_array(["two", "one"])),
+        "same closure regardless of selection order",
+    );
+    testing::assert_eq(home, reordered);
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn dependency_discovery_rejects_unsafe_paths_and_linked_checkouts() -> () {
+    let root = fixture();
+    for target in Vec::from_array(["", ".", "/tmp", "../outside", "build/../cache"]) {
+        write_manifest(
+            root,
+            "one",
+            "[module]\npath = \"ecosystem::one\"\n[build]\ntarget-dir = \"" + target + "\"\n",
+        );
+        let error = testing::expect_err(
+            verify::registry_snapshot(root, root, Vec::from_array(["one"])),
+            "unsafe build output",
+        );
+        testing::assert(error.contains("invalid build target directory"));
+    }
+    write_manifest(
+        root,
+        "one",
+        "[module]\npath = \"ecosystem::one\"\n[dependencies]\n\"ecosystem::../outside\" = \"0.1.0\"\n",
+    );
+    let error = testing::expect_err(
+        verify::registry_snapshot(root, root, Vec::from_array(["one"])),
+        "unsafe dependency",
+    );
+    testing::assert(error.contains("invalid module directory"));
+    testing::assert(error.contains("one/goml.toml"));
+    testing::assert_ok(fs::symbolic_link(path::join(root, "two"), path::join(root, "linked")));
+    testing::assert_err(verify::registry_snapshot(root, root, Vec::from_array(["linked"])));
+    testing::assert_ok(fs::remove_file(path::join(root, "one/goml.toml")));
+    testing::assert_ok(
+        fs::symbolic_link(path::join(root, "two/goml.toml"), path::join(root, "one/goml.toml")),
+    );
+    testing::assert_err(verify::registry_snapshot(root, root, Vec::from_array(["one"])));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
 #[test]
 fn concurrent_publication_only_exposes_complete_identical_snapshots() -> () {
     let root = fixture();
