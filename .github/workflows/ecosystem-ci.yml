@@ -76,5 +76,6 @@ jobs:
           path: |
             libraries/verification/_artifact/ci/
             libraries/verification/_artifact/verification/
+            libraries/${{ inputs.module }}/_artifact/codegen.tsv
           if-no-files-found: ignore
           retention-days: 14

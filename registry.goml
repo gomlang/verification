@@ -91,6 +91,7 @@ pub fn modules() -> Vec[string] {
             "jwt",
             "s3",
             "wasm",
+            "goir",
         ],
     )
 }

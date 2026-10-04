@@ -17,7 +17,7 @@ just ecosystem-test --list
 GOML=/path/to/goml-0.1.57/bin/goml just ecosystem-test
 ```
 
-No module arguments selects all 69 libraries registered in `modules()`, including UUID, YAML, JWT, S3 and the WebAssembly interpreter, plus `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
+No module arguments selects all 70 libraries registered in `modules()`, including UUID, YAML, JWT, S3, the WebAssembly interpreter and goir, plus `goml_stats` and Explorer. Each selected module must exist. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
 progress, tui_markdown and Explorer. The ndarray check also compiles SSE2 and
 scalar variants, inspects the linked kernel symbols and repeats reference tests.
 Unicode tools freshly download checksum-pinned inputs on every conformance run.

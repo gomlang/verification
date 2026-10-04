@@ -31,6 +31,8 @@ The verification and ecosystem catalog jobs run infrastructure regression tests,
 the verifier's own GoML tests, and module/dependency/catalog consistency checks.
 Workflow syntax is checked with actionlint. Logs and reports are retained for
 14 days even when verification fails.
+For goir, the artifact also includes the native test's `_artifact/codegen.tsv`
+comparison of register and reference stack backends.
 
 Only `contents: read` is granted, checkout credentials are not persisted, and no
 secrets or write tokens are passed to tests. Pull requests run through the normal
