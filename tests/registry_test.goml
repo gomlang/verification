@@ -723,6 +723,27 @@ fn current_incomplete_report_is_visible_before_the_first_command() -> () {
 }
 
 #[test]
+fn report_parents_are_created_beside_the_filesystem_destination() -> () {
+    let root = fixture();
+    let outer = path::join(root, "one");
+    let actual = path::join(root, "two");
+    let nested = path::join(actual, "nested");
+    testing::assert_ok(fs::create_dir(nested));
+    testing::assert_ok(fs::symbolic_link(nested, path::join(outer, "link")));
+    let requested = outer + "/link/../reports/result.json";
+    let expected = path::join(actual, "reports/result.json");
+    for content in Vec::from_array(["{\"success\":false}\n", "{\"success\":true}\n"]) {
+        testing::assert_ok(verify::atomic_report(requested, content));
+        testing::assert_eq(
+            testing::expect_ok(fs::read_file_structured(expected), "actual report destination"),
+            content,
+        );
+        testing::assert(!fs::exists(path::join(outer, "reports")));
+    }
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn final_report_write_failure_preserves_the_verification_error() -> () {
     let root = fixture();
     let driver = path::join(root, "driver");

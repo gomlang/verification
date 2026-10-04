@@ -7,6 +7,7 @@ use std::io;
 use std::json;
 use std::path;
 use std::process;
+use std::text;
 use std::time;
 use std::utf8;
 use utf8::BytesUtf8;
@@ -480,10 +481,15 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
     result
 }
 
-fn atomic_report(path: string, encoded: string) -> Result[(), string] {
-    let temporary = temporary_directory(path::parent(path).unwrap_or("."))?;
+pub fn atomic_report(path: string, encoded: string) -> Result[(), string] {
+    let absolute = absolute_input_path(path)?;
+    let parent = absolute.byte_slice(0, text::rfind(absolute, "/").unwrap_or(0) + 1);
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let temporary = temporary_directory(resolve_directory(parent)?)?;
     let staged = path::join(temporary, "report.json");
-    let result = fs::write_file_structured(staged, encoded).and_then(|_| fs::rename(staged, path));
+    let result = fs::write_file_structured(staged, encoded).and_then(
+        |_| fs::rename(staged, absolute),
+    );
     let cleanup = fs::remove_dir_all(temporary).map_err(|error| error.to_string());
     result.map_err(|error| error.to_string())?;
     cleanup

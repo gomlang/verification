@@ -100,6 +100,10 @@ pub fn resolve_library_root(selected: string) -> Result[string, string] {
     if selected == "" {
         return Result::Err("GOMLANG_LIBRARIES cannot be empty");
     }
+    resolve_directory(selected).map_err(|error| "library " + error)
+}
+
+fn resolve_directory(selected: string) -> Result[string, string] {
     let absolute = absolute_input_path(selected)?;
     let mut resolved = "/";
     // Resolve each directory before interpreting the next parent component.
@@ -109,7 +113,7 @@ pub fn resolve_library_root(selected: string) -> Result[string, string] {
         }
         let next = resolved + "/" + component;
         if !fs::is_dir(next) {
-            return Result::Err("library directory does not exist: " + absolute);
+            return Result::Err("directory does not exist: " + absolute);
         }
         resolved = fs::canonicalize(next).map_err(|error| error.to_string())?;
     }

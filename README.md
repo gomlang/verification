@@ -53,6 +53,9 @@ sets `completed: true` for either success or a handled failure. Interrupted runs
 retain their initial metadata and raw stream logs instead of the previous run's
 success report; command records are finalized when verification returns. Each
 report file is replaced atomically so readers see complete JSON.
+Report parent directories follow filesystem resolution of symbolic links and
+`..`; temporary files are placed beside the actual destination, including when
+the selected report directory is on another filesystem.
 After the repository root is found, argument, library-directory and registry
 setup failures also replace the latest report with a completed failure. Its
 `phase` is `options`, `libraries` or `registry`, with the original error and
