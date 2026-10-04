@@ -31,8 +31,11 @@ Individual test deadlines are 300 seconds; command deadlines are 600 seconds.
 Failures write captured output and return a nonzero status. The final JSON
 report records success, selected modules, registry identity, command durations,
 exit codes and log paths under `_artifact/verification/`.
-`GOML_VERIFY_REPORT` can select a different JSON report path when running disjoint
-module batches concurrently.
+Each invocation retains its logs and original `report.json` in a unique, visible
+`runs/run-.../` directory, also recorded as `run_directory` in the report. Later
+runs cannot overwrite logs referenced by earlier reports. The default
+`_artifact/verification/report.json` remains a copy of the latest report;
+`GOML_VERIFY_REPORT` selects a different copy path for independent module batches.
 
 Reference fixtures retain results from independent implementations, along with
 their provenance. Native tests consume those fixed expectations; they do not

@@ -324,15 +324,19 @@ pub fn capture_modules(root: string, names: Vec[string]) -> Result[Vec[CapturedM
     Result::Ok(captured)
 }
 
-pub fn temporary_directory(parent: string) -> Result[string, string] {
+fn unique_directory(parent: string, prefix: string) -> Result[string, string] {
     fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     for _ in 0..16 {
-        let candidate = path::join(parent, ".verification-" + hash::sha256(rand::bytes(32)?));
+        let candidate = path::join(parent, prefix + hash::sha256(rand::bytes(32)?));
         if fs::create_dir(candidate).is_ok() {
             return Result::Ok(candidate);
         }
     }
-    Result::Err("cannot create temporary directory in " + parent)
+    Result::Err("cannot create unique directory in " + parent)
+}
+
+pub fn temporary_directory(parent: string) -> Result[string, string] {
+    unique_directory(parent, ".verification-")
 }
 
 fn write_snapshot(staged: string, captured: Vec[CapturedModule]) -> Result[(), string] {

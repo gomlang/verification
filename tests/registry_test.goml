@@ -497,6 +497,68 @@ fn command_errors_are_recorded_and_options_reject_unknown_names() -> () {
     testing::assert_ok(fs::remove_dir_all(root));
 }
 
+fn failed_report(root: string, driver: string) -> (string, json::Value) {
+    let options = verify::Options {
+        selected: Vec::from_array(["one"]),
+        goml: driver,
+        registry_only: false,
+        race: false,
+        list: false,
+    };
+    testing::assert_err(verify::verify_all(root, root, root, options));
+    let content = testing::expect_ok(
+        fs::read_file_structured(path::join(root, "_artifact/verification/report.json")),
+        "failed run report",
+    );
+    (content, testing::expect_ok(json::parse(content), "report JSON"))
+}
+
+fn report_log(report: json::Value) -> string {
+    let commands = testing::expect_some(
+        json::field(report, "commands").and_then(|value| json::as_array(value)),
+        "report commands",
+    );
+    testing::assert_eq(commands.len(), 1);
+    testing::expect_some(
+        json::field(commands[0], "log").and_then(|value| json::as_string(value)),
+        "command log path",
+    )
+}
+
+#[test]
+fn repeated_runs_preserve_original_logs_and_their_reports() -> () {
+    let root = fixture();
+    let (first_content, first) = failed_report(root, "false");
+    let first_log = report_log(first);
+    let original = testing::expect_ok(fs::read_file_structured(first_log), "first failure log");
+    let (second_content, second) = failed_report(root, "sh");
+    let second_log = report_log(second);
+    testing::assert_ne(first_log, second_log);
+    testing::assert_eq(
+        testing::expect_ok(fs::read_file_structured(first_log), "preserved first log"),
+        original,
+    );
+    testing::assert_ne(
+        testing::expect_ok(fs::read_file_structured(second_log), "second failure log"),
+        original,
+    );
+    for (content, report) in Vec::from_array([(first_content, first), (second_content, second)]) {
+        let directory = testing::expect_some(
+            json::field(report, "run_directory").and_then(|value| json::as_string(value)),
+            "retained run directory",
+        );
+        testing::assert(path::file_name(directory).unwrap_or("").starts_with("run-"));
+        testing::assert_eq(
+            testing::expect_ok(
+                fs::read_file_structured(path::join(directory, "report.json")),
+                "retained report",
+            ),
+            content,
+        );
+    }
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
 #[test]
 fn expanded_libraries_are_unique_and_available_to_the_runner() -> () {
     let libraries = verify::modules();

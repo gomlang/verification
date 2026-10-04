@@ -398,8 +398,8 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
     (),
     string,
 ] {
-    let logs = path::join(root, "_artifact/verification");
-    fs::create_dir_all(logs).map_err(|error| error.to_string())?;
+    let reports = path::join(root, "_artifact/verification");
+    let logs = unique_directory(path::join(reports, "runs"), "run-")?;
     let context = Verification { root, libraries, home, goml: options.goml, records: Vec::new() };
     let mut result: Result[(), string] = Result::Ok(());
     for name in options.selected {
@@ -413,19 +413,24 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
             [
                 ("modules", json::to_value(options.selected)?),
                 ("registry_home", json::to_value(home)?),
+                ("run_directory", json::to_value(logs)?),
                 ("success", json::to_value(result.is_ok())?),
                 ("race", json::to_value(options.race)?),
                 ("commands", json::to_value(context.records)?),
             ],
         ),
     );
-    let report_path = env::var_structured("GOML_VERIFY_REPORT").unwrap_or(
-        path::join(logs, "report.json"),
-    );
-    fs::create_dir_all(path::parent(report_path).unwrap_or(logs)).map_err(|error| error.to_string())?;
-    fs::write_file_structured(report_path, json::encode(report) + "\n").map_err(
+    let encoded = json::encode(report) + "\n";
+    fs::write_file_structured(path::join(logs, "report.json"), encoded).map_err(
         |error| error.to_string(),
     )?;
+    let report_path = env::var_structured("GOML_VERIFY_REPORT").unwrap_or(
+        path::join(reports, "report.json"),
+    );
+    fs::create_dir_all(path::parent(report_path).unwrap_or(reports)).map_err(
+        |error| error.to_string(),
+    )?;
+    fs::write_file_structured(report_path, encoded).map_err(|error| error.to_string())?;
     io::println("Verification report: " + report_path);
     result
 }
