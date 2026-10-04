@@ -3,6 +3,7 @@ package tests;
 use ecosystem::verification as verify;
 use std::bytes;
 use std::crypto::hash;
+use std::env;
 use std::fs;
 use std::json;
 use std::path;
@@ -820,6 +821,49 @@ fn option_failures_replace_old_success_reports_and_keep_the_original_error() -> 
         );
         testing::assert(error.starts_with(cause));
         testing::assert(cause.contains(arguments[0]));
+    }
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn library_and_driver_paths_preserve_filesystem_parent_resolution() -> () {
+    let root = fixture();
+    let outer = path::join(root, "one");
+    let actual = path::join(root, "two");
+    let nested = path::join(actual, "nested");
+    testing::assert_ok(fs::create_dir(nested));
+    testing::assert_ok(fs::symbolic_link(nested, path::join(outer, "link")));
+    testing::assert_ok(fs::write_file_structured(path::join(outer, "driver"), "wrong driver"));
+    testing::assert_ok(fs::write_file_structured(path::join(actual, "driver"), "requested driver"));
+    let selected = outer + "/link/..";
+    let cwd = testing::expect_ok(env::current_dir_structured(), "current working directory");
+    testing::assert(selected.starts_with(cwd + "/"));
+    let relative = selected.byte_slice(cwd.byte_len() + 1, selected.byte_len());
+    for value in Vec::from_array([selected, relative]) {
+        testing::assert_eq(
+            testing::expect_ok(verify::resolve_library_root(value), "selected library directory"),
+            actual,
+        );
+        let options = testing::expect_ok(
+            verify::parse_options(Vec::from_array(["--goml", value + "/driver"]), root),
+            "selected driver path",
+        );
+        testing::assert_eq(
+            testing::expect_ok(fs::read_file_structured(options.goml), "selected driver"),
+            "requested driver",
+        );
+    }
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn library_paths_do_not_clean_away_missing_or_nondirectory_components() -> () {
+    let root = fixture();
+    testing::assert_ok(fs::write_file_structured(path::join(root, "file"), "ordinary file"));
+    for component in Vec::from_array(["missing", "file"]) {
+        let selected = root + "/" + component + "/../two";
+        testing::assert(!fs::is_dir(selected));
+        testing::assert_err(verify::resolve_library_root(selected));
     }
     testing::assert_ok(fs::remove_dir_all(root));
 }

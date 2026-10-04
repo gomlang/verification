@@ -6,6 +6,10 @@ registry snapshots, race and SIMD checks, and Linux PTY sessions. The
 and an independent VT screen model. It depends only on the standard library.
 Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The seven native fixtures in bench, llvm, redis, sql, sqlite, web and yaml retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. GoML 0.1.57 or newer and Go 1.26+ are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
 
+`GOMLANG_LIBRARIES` and `--goml` accept relative or absolute paths with filesystem
+resolution of symbolic links and `..`. Missing or non-directory components in
+the library path are rejected even when followed by `..`.
+
 From this repository root:
 
 ```sh

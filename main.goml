@@ -34,9 +34,7 @@ pub fn parse_options(arguments: Vec[string], root: string) -> Result[Options, st
                 if index == arguments.len() {
                     return Result::Err("--goml requires a path");
                 }
-                options.goml = path::absolute_structured(arguments[index]).map_err(
-                    |error| error.to_string(),
-                )?;
+                options.goml = absolute_input_path(arguments[index])?;
             },
             "--registry-only" => {
                 options.registry_only = true;
@@ -83,17 +81,39 @@ pub fn repository_root(start: string) -> Result[string, string] {
     }
 }
 
+fn absolute_input_path(selected: string) -> Result[string, string] {
+    if path::is_absolute(selected) {
+        Result::Ok(selected)
+    } else {
+        let current = env::current_dir_structured().map_err(|error| error.to_string())?;
+        Result::Ok(current + "/" + selected)
+    }
+}
+
 pub fn library_root(root: string) -> Result[string, string] {
     let default = path::parent(root).unwrap_or(root);
     let selected = env::var_structured("GOMLANG_LIBRARIES").unwrap_or(default);
+    resolve_library_root(selected)
+}
+
+pub fn resolve_library_root(selected: string) -> Result[string, string] {
     if selected == "" {
         return Result::Err("GOMLANG_LIBRARIES cannot be empty");
     }
-    let absolute = path::absolute_structured(selected).map_err(|error| error.to_string())?;
-    if !fs::is_dir(absolute) {
-        return Result::Err("library directory does not exist: " + absolute);
+    let absolute = absolute_input_path(selected)?;
+    let mut resolved = "/";
+    // Resolve each directory before interpreting the next parent component.
+    for component in absolute.split("/") {
+        if component == "" {
+            continue;
+        }
+        let next = resolved + "/" + component;
+        if !fs::is_dir(next) {
+            return Result::Err("library directory does not exist: " + absolute);
+        }
+        resolved = fs::canonicalize(next).map_err(|error| error.to_string())?;
     }
-    Result::Ok(absolute)
+    Result::Ok(resolved)
 }
 
 fn execute() -> Result[(), string] {
