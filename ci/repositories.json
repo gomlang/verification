@@ -72,7 +72,7 @@
     "kind": "library"
   },
   "ecosystem": {
-    "revision": "84fca673757212c57622858f8a490c7afe7773c9",
+    "revision": "8712891a6e9f6b68760b9c9358ac7b5de763be87",
     "kind": "catalog"
   },
   "explorer": {
@@ -88,7 +88,7 @@
     "kind": "library"
   },
   "goir": {
-    "revision": "e8e428262943ad76a5123c03e9bf1e3abaa45e86",
+    "revision": "01f41cbcfa4cd12cea4eac66098f9564308caa84",
     "kind": "library"
   },
   "goml_stats": {
