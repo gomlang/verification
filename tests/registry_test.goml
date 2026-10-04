@@ -722,6 +722,46 @@ fn current_incomplete_report_is_visible_before_the_first_command() -> () {
 }
 
 #[test]
+fn option_failures_replace_old_success_reports_and_keep_the_original_error() -> () {
+    let root = fixture();
+    let reports = path::join(root, "_artifact/verification");
+    testing::assert_ok(fs::create_dir_all(reports));
+    let report = path::join(reports, "report.json");
+    for arguments in Vec::from_array([Vec::from_array(["--unknown"]), Vec::from_array(["--goml"])]) {
+        testing::assert_ok(fs::write_file_structured(report, "{\"success\":true}"));
+        let error = testing::expect_err(
+            verify::execute_arguments(root, arguments),
+            "invalid options",
+        );
+        let result = testing::expect_ok(
+            json::parse(
+                testing::expect_ok(fs::read_file_structured(report), "setup failure report"),
+            ),
+            "setup failure JSON",
+        );
+        testing::assert(
+            json::field(result, "success").and_then(|value| json::as_bool(value))
+                == Option::Some(false),
+        );
+        testing::assert(
+            json::field(result, "completed").and_then(|value| json::as_bool(value))
+                == Option::Some(true),
+        );
+        testing::assert(
+            json::field(result, "phase").and_then(|value| json::as_string(value))
+                == Option::Some("options"),
+        );
+        let cause = testing::expect_some(
+            json::field(result, "error").and_then(|value| json::as_string(value)),
+            "original setup error",
+        );
+        testing::assert(error.starts_with(cause));
+        testing::assert(cause.contains(arguments[0]));
+    }
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn expanded_libraries_are_unique_and_available_to_the_runner() -> () {
     let libraries = verify::modules();
     testing::assert_eq(libraries.len(), 70);

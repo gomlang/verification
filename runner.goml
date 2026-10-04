@@ -491,6 +491,7 @@ fn write_report(
     let report = json::object(
         Vec::from_array(
             [
+                ("phase", json::Value::String("verification")),
                 ("modules", json::to_value(options.selected)?),
                 ("registry_home", json::to_value(context.home)?),
                 ("run_directory", json::to_value(logs)?),
@@ -508,10 +509,49 @@ fn write_report(
             ],
         ),
     );
+    save_report(context.root, logs, report)
+}
+
+fn write_setup_report(
+    root: string,
+    arguments: Vec[string],
+    phase: string,
+    options: Option[Options],
+    error: string,
+) -> Result[string, string] {
+    let logs = unique_directory(path::join(root, "_artifact/verification/runs"), "run-")?;
+    let selected = match options {
+        Option::Some(value) => value.selected,
+        Option::None => Vec::new(),
+    };
+    let race = match options {
+        Option::Some(value) => json::to_value(value.race)?,
+        Option::None => json::Value::Null,
+    };
+    let report = json::object(
+        Vec::from_array(
+            [
+                ("phase", json::Value::String(phase)),
+                ("requested_arguments", json::to_value(arguments)?),
+                ("modules", json::to_value(selected)?),
+                ("registry_home", json::Value::Null),
+                ("run_directory", json::Value::String(logs)),
+                ("completed", json::Value::Bool(true)),
+                ("success", json::Value::Bool(false)),
+                ("error", json::Value::String(error)),
+                ("race", race),
+                ("commands", json::Value::Array(Vec::new())),
+            ],
+        ),
+    );
+    save_report(root, logs, report)
+}
+
+fn save_report(root: string, logs: string, report: json::Value) -> Result[string, string] {
     let encoded = json::encode(report) + "\n";
     atomic_report(path::join(logs, "report.json"), encoded)?;
     let report_path = env::var_structured("GOML_VERIFY_REPORT").unwrap_or(
-        path::join(context.root, "_artifact/verification/report.json"),
+        path::join(root, "_artifact/verification/report.json"),
     );
     atomic_report(report_path, encoded)?;
     Result::Ok(report_path)

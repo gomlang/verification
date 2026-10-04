@@ -49,6 +49,14 @@ sets `completed: true` for either success or a handled failure. Interrupted runs
 retain their initial metadata and raw stream logs instead of the previous run's
 success report; command records are finalized when verification returns. Each
 report file is replaced atomically so readers see complete JSON.
+After the repository root is found, argument, library-directory and registry
+setup failures also replace the latest report with a completed failure. Its
+`phase` is `options`, `libraries` or `registry`, with the original error and
+`requested_arguments`; no commands or registry home are claimed. An options
+failure leaves `race` null because configuration parsing did not finish. Normal
+verification reports use `phase: "verification"`. Setup errors keep their nonzero
+exit status and original stderr diagnostic, even if writing the report also
+fails. Successful `--registry-only` output remains a single registry path.
 
 Reference fixtures retain results from independent implementations, along with
 their provenance. Native tests consume those fixed expectations; they do not

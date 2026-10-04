@@ -99,7 +99,14 @@ pub fn library_root(root: string) -> Result[string, string] {
 fn execute() -> Result[(), string] {
     let root = repository_root(env::current_dir_structured().map_err(|error| error.to_string())?)?;
     let arguments = env::args();
-    let options = parse_options(arguments.slice(1, arguments.len()).to_vec(), root)?;
+    execute_arguments(root, arguments.slice(1, arguments.len()).to_vec())
+}
+
+pub fn execute_arguments(root: string, arguments: Vec[string]) -> Result[(), string] {
+    let options = match parse_options(arguments, root) {
+        Result::Ok(options) => options,
+        Result::Err(error) => return setup_failed(root, arguments, "options", Option::None, error),
+    };
     if options.list {
         io::println(
             "Usage: just ecosystem-test [--goml PATH] [--no-race] [MODULE...]\nNative GoML tests, example and downstream verification, cache stability, PTY and race checks.\n--registry-only prints the isolated registry GOML_HOME.",
@@ -109,13 +116,45 @@ fn execute() -> Result[(), string] {
         }
         return Result::Ok(());
     }
-    let libraries = library_root(root)?;
-    let home = registry_snapshot(libraries, root, options.selected)?;
+    let libraries = match library_root(root) {
+        Result::Ok(libraries) => libraries,
+        Result::Err(error) => return setup_failed(
+            root,
+            arguments,
+            "libraries",
+            Option::Some(options),
+            error,
+        ),
+    };
+    let home = match registry_snapshot(libraries, root, options.selected) {
+        Result::Ok(home) => home,
+        Result::Err(error) => return setup_failed(
+            root,
+            arguments,
+            "registry",
+            Option::Some(options),
+            error,
+        ),
+    };
     if options.registry_only {
         io::println(home);
         return Result::Ok(());
     }
     verify_all(root, libraries, home, options)
+}
+
+fn setup_failed(
+    root: string,
+    arguments: Vec[string],
+    phase: string,
+    options: Option[Options],
+    error: string,
+) -> Result[(), string] {
+    let diagnostic = match write_setup_report(root, arguments, phase, options, error) {
+        Result::Ok(report) => error + "\nVerification report: " + report,
+        Result::Err(report_error) => error + "\nCould not write failure report: " + report_error,
+    };
+    Result::Err(diagnostic)
 }
 
 fn main() -> () {
