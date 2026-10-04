@@ -107,14 +107,32 @@ def install(prefix, file=CI / "toolchain.json"):
     run([prefix / "bin/goml", "version"])
 
 
+def read_toml(path):
+    try:
+        return tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as error:
+        raise ValueError(f"invalid TOML in {path}: {error}") from error
+
+
 def source_manifests(root, filename):
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError(f"missing source directory or symbolic link: {root}")
+
+    def walk_error(error):
+        raise error
+
     outputs = set()
-    for directory, directories, files in os.walk(root):
+    for directory, directories, files in os.walk(root, onerror=walk_error):
         directory = Path(directory)
         project = directory / "goml.toml"
         if "goml.toml" in files and not project.is_symlink():
-            target = tomllib.loads(project.read_text()).get("build", {}).get("target-dir", "_artifact")
-            if not isinstance(target, str) or not target or Path(target).is_absolute() or ".." in Path(target).parts:
+            build = read_toml(project).get("build", {})
+            if not isinstance(build, dict):
+                raise ValueError(f"build must be a table: {project}")
+            target = build.get("target-dir", "_artifact")
+            if (not isinstance(target, str) or not target or "\\" in target
+                    or Path(target).is_absolute() or ".." in Path(target).parts
+                    or Path(target) == Path(".")):
                 raise ValueError(f"invalid build target directory: {project}")
             outputs.add(directory / target)
         directories[:] = sorted(name for name in directories if name not in {
@@ -130,21 +148,33 @@ def manifests(root):
 
 
 def dependency_closure(root, module, records):
-    pending, visited = [module], set()
+    pending, visited = [(module, f"selected module {module}")], set()
     while pending:
-        name = pending.pop()
+        name, reason = pending.pop()
         if name in visited:
             continue
-        selected_module(name, records)
+        try:
+            selected_module(name, records)
+        except ValueError as error:
+            raise ValueError(f"{reason}: {error}") from error
+        directory = root / name
+        if directory.is_symlink() or not directory.is_dir():
+            raise ValueError(f"{reason}: missing source directory or symbolic link: {directory}")
+        if records.get(name, {}).get("kind") != "catalog":
+            manifest = directory / "goml.toml"
+            if manifest.is_symlink() or not manifest.is_file():
+                raise ValueError(f"{reason}: missing source manifest or symbolic link: {manifest}")
         visited.add(name)
-        for manifest in manifests(root / name):
-            data = tomllib.loads(manifest.read_text())
+        for manifest in manifests(directory):
+            data = read_toml(manifest)
             for section in ("dependencies", "dev-dependencies"):
-                for coordinate in data.get(section, {}):
+                dependencies = data.get(section, {})
+                if not isinstance(dependencies, dict):
+                    raise ValueError(f"{section} must be a table: {manifest}")
+                for coordinate in dependencies:
                     if coordinate.startswith("ecosystem::"):
                         dependency = coordinate.removeprefix("ecosystem::")
-                        selected_module(dependency, records)
-                        pending.append(dependency)
+                        pending.append((dependency, f"dependency {dependency} required by {manifest}"))
     return sorted(visited)
 
 

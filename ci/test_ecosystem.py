@@ -55,6 +55,65 @@ class InfrastructureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown ecosystem repository"):
             ecosystem.dependency_closure(self.root, "app", self.record("app"))
 
+    def test_missing_registered_dependency_is_a_failure_with_source(self):
+        self.manifest("app", '[dependencies]\n"ecosystem::core"="0.1.0"\n', "testdata/downstream/native")
+        self.manifest("app", '[module]\npath="example::app"\n')
+        records = self.record("app") | self.record("core")
+        with self.assertRaisesRegex(ValueError, "dependency core.*app/testdata/downstream/native/goml.toml"):
+            ecosystem.dependency_closure(self.root, "app", records)
+        (self.root / "core").mkdir()
+        with self.assertRaisesRegex(ValueError, "dependency core.*goml.toml"):
+            ecosystem.dependency_closure(self.root, "app", records)
+
+    def test_missing_or_linked_selected_sources_are_rejected(self):
+        records = self.record("app")
+        with self.assertRaisesRegex(ValueError, "selected module app"):
+            ecosystem.dependency_closure(self.root, "app", records)
+        self.manifest("external", '[module]\npath="ecosystem::app"\n')
+        (self.root / "app").symlink_to(self.root / "external", target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "selected module app"):
+            ecosystem.dependency_closure(self.root, "app", records)
+        (self.root / "app").unlink()
+        (self.root / "app").mkdir()
+        (self.root / "app/goml.toml").symlink_to(self.root / "external/goml.toml")
+        with self.assertRaisesRegex(ValueError, "selected module app"):
+            ecosystem.dependency_closure(self.root, "app", records)
+
+    def test_source_walk_errors_are_not_silently_ignored(self):
+        self.manifest("app", '[module]\npath="ecosystem::app"\n')
+        failure = PermissionError("unreadable source directory")
+        def walk(path, *, onerror=None):
+            if onerror is not None:
+                onerror(failure)
+            return iter(())
+        with patch.object(ecosystem.os, "walk", side_effect=walk):
+            with self.assertRaisesRegex(PermissionError, "unreadable source directory"):
+                ecosystem.dependency_closure(self.root, "app", self.record("app"))
+
+    def test_native_preflight_failure_never_starts_downloads(self):
+        self.manifest("app", '[dependencies]\n"ecosystem::core"="0.1.0"\n')
+        (self.root / "app/go.mod").write_text("module example.com/app\n")
+        with patch.object(ecosystem, "run") as run:
+            with self.assertRaises(ValueError):
+                ecosystem.native(self.root, "app", self.record("app") | self.record("core"))
+        run.assert_not_called()
+
+    def test_catalog_native_discovery_needs_no_goml_manifest(self):
+        (self.root / "ecosystem").mkdir()
+        records = {"ecosystem": {"kind": "catalog", "revision": "a" * 40}}
+        with patch.object(ecosystem, "run") as run:
+            ecosystem.native(self.root, "ecosystem", records)
+        run.assert_not_called()
+
+    def test_invalid_manifest_sections_fail_with_a_source_path(self):
+        for content in ['dependencies=["ecosystem::core"]\n', 'build="bad"\n',
+                        '[build]\ntarget-dir="."\n', '[build]\ntarget-dir="build\\\\cache"\n',
+                        'invalid TOML']:
+            with self.subTest(content=content):
+                self.manifest("app", content)
+                with self.assertRaisesRegex(ValueError, "app/goml.toml"):
+                    ecosystem.dependency_closure(self.root, "app", self.record("app") | self.record("core"))
+
     def test_prepare_preserves_candidate_revision(self):
         records = self.record("app") | self.record("dependency")
         (self.root / "app/.git").mkdir(parents=True)

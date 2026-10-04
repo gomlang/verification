@@ -17,6 +17,10 @@ with its own binaries. The runner uses Go 1.26 on Ubuntu 24.04. Native dependenc
 are downloaded explicitly before readonly GoML compilation, including manifests
 in transitive dependencies, named examples and downstream fixture modules.
 Discovery skips generated directories and symbolic links; failures stop the job.
+Before native downloads start, every selected repository and transitive dependency
+must have a real source directory and root manifest (catalogs need no manifest).
+Missing dependencies identify the referring manifest, and source traversal errors
+fail the job instead of silently omitting nested native modules.
 This includes the HTML parsing/sanitization, image codec, YAML and JWT adapters.
 LLVM, SQLite and shell
 completion prerequisites are installed for their corresponding jobs.
