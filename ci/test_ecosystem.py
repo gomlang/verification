@@ -36,6 +36,25 @@ class InfrastructureTests(unittest.TestCase):
                 self.read_inventory(self.record(revision=revision))
         self.assertEqual(self.read_inventory(self.record()), self.record())
 
+    def test_inventory_rejects_duplicate_repository_and_record_keys(self):
+        file = self.root / "repositories.json"
+        record = json.dumps(self.record()["example"])
+        for text in [f'{{"example":{record},"example":{record}}}',
+                     '{"example":{"revision":"' + "a" * 40 + '","revision":"'
+                     + "b" * 40 + '","kind":"library"}}']:
+            with self.subTest(text=text):
+                file.write_text(text)
+                with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+                    ecosystem.inventory(file)
+
+    def test_inventory_reports_invalid_record_types_as_validation_errors(self):
+        for record in [None, True, 42, "invalid", [], ["revision", "kind"],
+                       {"revision": 42, "kind": "library"},
+                       {"revision": "a" * 40, "kind": []}]:
+            with self.subTest(record=record):
+                with self.assertRaisesRegex(ValueError, "example"):
+                    self.read_inventory({"example": record})
+
     def test_unknown_modules_are_rejected(self):
         for name in [None, "../example", "other"]:
             with self.subTest(name=name), self.assertRaises(ValueError):

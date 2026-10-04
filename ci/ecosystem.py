@@ -14,18 +14,27 @@ import tomllib
 CI = Path(__file__).resolve().parent
 
 
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def inventory(file=CI / "repositories.json"):
-    records = json.loads(file.read_text())
+    records = json.loads(file.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
     if not isinstance(records, dict) or not records:
         raise ValueError("repository inventory must be a nonempty object")
     for name, record in records.items():
         if not re.fullmatch(r"[a-z][a-z0-9_]*", name) or name == "verification":
             raise ValueError(f"invalid repository name: {name}")
-        if set(record) != {"revision", "kind"}:
+        if not isinstance(record, dict) or set(record) != {"revision", "kind"}:
             raise ValueError(f"invalid repository record: {name}")
-        if not re.fullmatch(r"[0-9a-f]{40}", record["revision"]):
+        if not isinstance(record["revision"], str) or not re.fullmatch(r"[0-9a-f]{40}", record["revision"]):
             raise ValueError(f"repository requires a full commit SHA: {name}")
-        if record["kind"] not in {"library", "application", "catalog"}:
+        if record["kind"] not in ("library", "application", "catalog"):
             raise ValueError(f"invalid repository kind: {name}")
     return records
 
