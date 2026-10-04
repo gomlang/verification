@@ -255,6 +255,7 @@ fn capture_directory(
     output: Vec[SourceFile],
     skip_modules: bool,
     outputs: Vec[string],
+    reject_links: bool,
 ) -> Result[(), string] {
     let directory = path::join(root, relative);
     let names = directory_names(directory)?;
@@ -276,6 +277,9 @@ fn capture_directory(
         }
         let metadata = fs::symlink_metadata(source).map_err(|error| error.to_string())?;
         if metadata.file_type().is_symlink() {
+            if reject_links {
+                return Result::Err("unexpected source symbolic link: " + source);
+            }
             continue;
         }
         if metadata.file_type().is_dir() {
@@ -285,7 +289,7 @@ fn capture_directory(
                 ).unwrap_or(false) {
                 continue
             }
-            capture_directory(root, child, output, skip_modules, outputs)?;
+            capture_directory(root, child, output, skip_modules, outputs, reject_links)?;
         } else if metadata.file_type().is_file() {
             output.push(
                 SourceFile {
@@ -305,7 +309,7 @@ pub fn capture_modules(root: string, names: Vec[string]) -> Result[Vec[CapturedM
             return Result::Err("invalid module directory: " + name);
         }
         let files = Vec::new();
-        capture_directory(path::join(root, name), "", files, true, Vec::new())?;
+        capture_directory(path::join(root, name), "", files, true, Vec::new(), false)?;
         let mut manifest = "";
         for file in files {
             if file.name == "goml.toml" {
@@ -339,10 +343,18 @@ pub fn temporary_directory(parent: string) -> Result[string, string] {
     unique_directory(parent, ".verification-")
 }
 
+fn registry_index(captured: Vec[CapturedModule]) -> string {
+    let mut index = "";
+    for module in captured {
+        index += "[modules.\"ecosystem::" + module.name
+            + "\"]\nlatest = \"0.1.0\"\nversions = [\"0.1.0\"]\n\n";
+    }
+    index
+}
+
 fn write_snapshot(staged: string, captured: Vec[CapturedModule]) -> Result[(), string] {
     let registry = path::join(staged, "cache/registry");
     fs::create_dir_all(registry).map_err(|error| error.to_string())?;
-    let mut index = "";
     for module in captured {
         let target = path::join(registry, "ecosystem/" + module.name + "/0.1.0");
         for file in module.files {
@@ -352,15 +364,13 @@ fn write_snapshot(staged: string, captured: Vec[CapturedModule]) -> Result[(), s
             )?;
             fs::write_bytes_structured(destination, file.content).map_err(|error| error.to_string())?;
         }
-        index += "[modules.\"ecosystem::" + module.name
-            + "\"]\nlatest = \"0.1.0\"\nversions = [\"0.1.0\"]\n\n";
     }
-    fs::write_file_structured(path::join(registry, "index.toml"), index).map_err(
+    fs::write_file_structured(path::join(registry, "index.toml"), registry_index(captured)).map_err(
         |error| error.to_string(),
     )
 }
 
-pub fn publish_snapshot(root: string, captured: Vec[CapturedModule]) -> Result[string, string] {
+fn snapshot_digest(captured: Vec[CapturedModule]) -> string {
     let mut digest = "goml-ecosystem-registry-v3\n";
     for module in captured {
         for file in module.files {
@@ -368,11 +378,64 @@ pub fn publish_snapshot(root: string, captured: Vec[CapturedModule]) -> Result[s
             digest += name.byte_len().to_string() + ":" + name + hash::sha256(file.content);
         }
     }
-    let parent = path::join(root, "_artifact/registry-snapshots");
-    let home = path::join(parent, hash::sha256(bytes::Bytes::from_string(digest)));
+    hash::sha256(bytes::Bytes::from_string(digest))
+}
+
+fn validate_snapshot(home: string, captured: Vec[CapturedModule]) -> Result[(), string] {
+    let directories = Vec::from_array(["", "cache", "cache/registry"]);
+    if !captured.is_empty() {
+        directories.push("cache/registry/ecosystem");
+    }
+    for module in captured {
+        directories.push("cache/registry/ecosystem/" + module.name);
+        directories.push("cache/registry/ecosystem/" + module.name + "/0.1.0");
+    }
+    for relative in directories {
+        let directory = path::join(home, relative);
+        let metadata = fs::symlink_metadata(directory).map_err(|error| error.to_string())?;
+        if !metadata.file_type().is_dir() {
+            return Result::Err("expected a directory: " + directory);
+        }
+    }
     let index = path::join(home, "cache/registry/index.toml");
-    if fs::is_file(index) {
-        return Result::Ok(home);
+    if !fs::symlink_metadata(index).map_err(|error| error.to_string())?.file_type().is_file() {
+        return Result::Err("expected an index file: " + index);
+    }
+    if fs::read_file_structured(index).map_err(|error| error.to_string())?
+        != registry_index(captured) {
+        return Result::Err("registry index changed");
+    }
+    let actual = Vec::new();
+    for module in captured {
+        let files = Vec::new();
+        capture_directory(
+            path::join(home, "cache/registry/ecosystem/" + module.name + "/0.1.0"),
+            "",
+            files,
+            true,
+            Vec::new(),
+            true,
+        )?;
+        actual.push(CapturedModule { name: module.name, files });
+    }
+    if snapshot_digest(actual) != snapshot_digest(captured) {
+        return Result::Err("registry sources changed");
+    }
+    Result::Ok(())
+}
+
+fn existing_snapshot(home: string, captured: Vec[CapturedModule]) -> Result[string, string] {
+    validate_snapshot(home, captured).map_err(
+        |error| "cannot reuse registry snapshot " + home + ": " + error,
+    )?;
+    Result::Ok(home)
+}
+
+pub fn publish_snapshot(root: string, captured: Vec[CapturedModule]) -> Result[string, string] {
+    let parent = path::join(root, "_artifact/registry-snapshots");
+    let home = path::join(parent, snapshot_digest(captured));
+    if fs::symlink_metadata(home).is_ok() {
+        return existing_snapshot(home, captured);
     }
     let temporary = temporary_directory(parent)?;
     let staged = path::join(temporary, "home");
@@ -380,8 +443,8 @@ pub fn publish_snapshot(root: string, captured: Vec[CapturedModule]) -> Result[s
         |_| {
             match fs::rename(staged, home) {
                 Result::Ok(()) => Result::Ok(home),
-                Result::Err(error) => if fs::is_file(index) {
-                    Result::Ok(home)
+                Result::Err(error) => if fs::symlink_metadata(home).is_ok() {
+                    existing_snapshot(home, captured)
                 } else {
                     Result::Err(error.to_string())
                 },
@@ -409,7 +472,7 @@ pub fn registry_snapshot(libraries: string, root: string, selected: Vec[string])
 
 pub fn artifact_fingerprint(directory: string) -> Result[string, string] {
     let files = Vec::new();
-    capture_directory(directory, "", files, false, Vec::new())?;
+    capture_directory(directory, "", files, false, Vec::new(), false)?;
     let mut value = "";
     for file in files {
         if !path::file_name(file.name).unwrap_or("").starts_with(".") {

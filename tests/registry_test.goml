@@ -408,6 +408,90 @@ fn invalid_coordinate_never_publishes_partial_registry() -> () {
 }
 
 #[test]
+fn changed_cached_registry_sources_are_rejected_without_overwriting_them() -> () {
+    for change in Vec::from_array(
+        ["edit", "delete", "add", "symlink", "extra-link", "index", "index-link", "directory-link"],
+    ) {
+        let root = fixture();
+        let captured = testing::expect_ok(
+            verify::capture_modules(root, Vec::from_array(["one", "two"])),
+            "capture modules",
+        );
+        let home = testing::expect_ok(verify::publish_snapshot(root, captured), "initial snapshot");
+        let directory = path::join(home, "cache/registry/ecosystem/one/0.1.0");
+        let source = path::join(directory, "main.goml");
+        match change {
+            "edit" => testing::assert_ok(fs::write_file_structured(source, "changed source")),
+            "delete" => testing::assert_ok(fs::remove_file(source)),
+            "add" => testing::assert_ok(
+                fs::write_file_structured(path::join(directory, "extra.goml"), "extra source"),
+            ),
+            "symlink" => {
+                testing::assert_ok(fs::remove_file(source));
+                testing::assert_ok(fs::symbolic_link(path::join(root, "one/main.goml"), source));
+            },
+            "extra-link" => testing::assert_ok(
+                fs::symbolic_link(
+                    path::join(root, "one/main.goml"),
+                    path::join(directory, "extra.goml"),
+                ),
+            ),
+            "index-link" => {
+                let index = path::join(home, "cache/registry/index.toml");
+                let saved = path::join(root, "saved-index.toml");
+                testing::assert_ok(fs::rename(index, saved));
+                testing::assert_ok(fs::symbolic_link(saved, index));
+            },
+            "directory-link" => {
+                let saved = path::join(root, "saved-sources");
+                testing::assert_ok(fs::rename(directory, saved));
+                testing::assert_ok(fs::symbolic_link(saved, directory));
+            },
+            _ => testing::assert_ok(
+                fs::write_file_structured(path::join(home, "cache/registry/index.toml"), ""),
+            ),
+        }
+        let error = testing::expect_err(
+            verify::publish_snapshot(root, captured),
+            "reject changed snapshot: " + change,
+        );
+        testing::assert(error.contains(home));
+        if change == "edit" {
+            testing::assert_eq(
+                testing::expect_ok(fs::read_file_structured(source), "preserved edited source"),
+                "changed source",
+            );
+        }
+        testing::assert_ok(fs::remove_dir_all(root));
+    }
+}
+
+#[test]
+fn generated_outputs_do_not_prevent_registry_reuse() -> () {
+    let root = fixture();
+    let captured = testing::expect_ok(
+        verify::capture_modules(root, Vec::from_array(["one", "two"])),
+        "capture modules",
+    );
+    let home = testing::expect_ok(verify::publish_snapshot(root, captured), "initial snapshot");
+    for relative in Vec::from_array(["_artifact/build", ".goml/cache"]) {
+        let directory = path::join(home, "cache/registry/ecosystem/one/0.1.0/" + relative);
+        testing::assert_ok(fs::create_dir_all(directory));
+        testing::assert_ok(fs::write_file_structured(path::join(directory, "cache"), "generated"));
+    }
+    testing::assert_eq(
+        testing::expect_ok(verify::publish_snapshot(root, captured), "reuse with outputs"),
+        home,
+    );
+    let empty = testing::expect_ok(verify::publish_snapshot(root, Vec::new()), "empty registry");
+    testing::assert_eq(
+        testing::expect_ok(verify::publish_snapshot(root, Vec::new()), "reuse empty registry"),
+        empty,
+    );
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn registry_skips_symlinks_and_keeps_binary_sources() -> () {
     let root = fixture();
     testing::assert_ok(fs::symbolic_link(root, path::join(root, "one/loop")));

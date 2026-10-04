@@ -62,7 +62,10 @@ The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
 paths when these variables are absent. Shared development dependencies are resolved
 from a content-addressed snapshot, whose files are captured once and published
 with an atomic directory rename. Concurrent publishers can only observe a
-complete index. The snapshot contains the selected ecosystem libraries and their
+complete index. Before reusing a snapshot, the runner checks its index and captured
+sources against the requested content. Changed files or source links fail with the
+snapshot path; existing contents are preserved. Generated build caches remain
+excluded from this comparison. The snapshot contains the selected ecosystem libraries and their
 transitive dependencies; application selections such as Explorer contribute their
 dependencies without becoming registry packages. Generated directories, manifest
 `[build].target-dir` outputs and symbolic links are excluded from both dependency
