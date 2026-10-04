@@ -467,7 +467,15 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
             break;
         }
     }
-    let report_path = write_report(context, options, logs, true, result)?;
+    let report_path = write_report(context, options, logs, true, result).map_err(
+        |report_error| {
+            let diagnostic = "Could not write final report: " + report_error;
+            match result {
+                Result::Ok(()) => diagnostic,
+                Result::Err(error) => error + "\n" + diagnostic,
+            }
+        },
+    )?;
     io::println("Verification report: " + report_path);
     result
 }

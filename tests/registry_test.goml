@@ -722,6 +722,69 @@ fn current_incomplete_report_is_visible_before_the_first_command() -> () {
 }
 
 #[test]
+fn final_report_write_failure_preserves_the_verification_error() -> () {
+    let root = fixture();
+    let driver = path::join(root, "driver");
+    testing::assert_ok(
+        fs::write_file_structured(
+            driver,
+            "#!/bin/sh\nreport=\"$GOML_VERIFY_ROOT/_artifact/verification/report.json\"\nrm \"$report\"\nmkdir \"$report\"\nexit 7\n",
+        ),
+    );
+    testing::assert(
+        testing::expect_ok(
+            process::Command::new("chmod").args(Vec::from_array(["755", driver])).status_structured(),
+            "executable failing driver",
+        ).success(),
+    );
+    let options = verify::Options {
+        selected: Vec::from_array(["one"]),
+        goml: driver,
+        registry_only: false,
+        race: false,
+        list: false,
+    };
+    let error = testing::expect_err(
+        verify::verify_all(root, root, root, options),
+        "verification and report publication both fail",
+    );
+    testing::assert(error.starts_with("command failed; see "));
+    testing::assert(error.contains("Could not write final report:"));
+    let runs = path::join(root, "_artifact/verification/runs");
+    let names = testing::expect_ok(fs::read_dir_names_structured(runs), "run directories");
+    testing::assert_eq(names.len(), 1);
+    let retained = testing::expect_ok(
+        json::parse(
+            testing::expect_ok(
+                fs::read_file_structured(path::join(path::join(runs, names[0]), "report.json")),
+                "retained final report",
+            ),
+        ),
+        "retained report JSON",
+    );
+    testing::assert(
+        json::field(retained, "completed").and_then(|value| json::as_bool(value))
+            == Option::Some(true),
+    );
+    let cause = testing::expect_some(
+        json::field(retained, "error").and_then(|value| json::as_string(value)),
+        "original command failure retained",
+    );
+    testing::assert(error.starts_with(cause));
+    testing::assert_eq(
+        json::field(
+            testing::expect_some(
+                json::field(retained, "commands").and_then(|value| json::as_array(value)),
+                "retained commands",
+            )[0],
+            "exit_code",
+        ).and_then(|value| json::as_int(value)).unwrap_or(-1),
+        7,
+    );
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn option_failures_replace_old_success_reports_and_keep_the_original_error() -> () {
     let root = fixture();
     let reports = path::join(root, "_artifact/verification");

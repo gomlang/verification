@@ -56,7 +56,9 @@ setup failures also replace the latest report with a completed failure. Its
 failure leaves `race` null because configuration parsing did not finish. Normal
 verification reports use `phase: "verification"`. Setup errors keep their nonzero
 exit status and original stderr diagnostic, even if writing the report also
-fails. Successful `--registry-only` output remains a single registry path.
+fails. Verification failures likewise keep the original diagnostic and log path
+when final report publication fails, appending the report-write error.
+Successful `--registry-only` output remains a single registry path.
 
 Reference fixtures retain results from independent implementations, along with
 their provenance. Native tests consume those fixed expectations; they do not
