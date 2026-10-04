@@ -72,7 +72,7 @@
     "kind": "library"
   },
   "ecosystem": {
-    "revision": "ec7c047ee0122682447791b5f1ada8f4e0d28d39",
+    "revision": "ca35517c1187d9e4a10bc0a15409bc8e81b73b31",
     "kind": "catalog"
   },
   "explorer": {
@@ -132,7 +132,7 @@
     "kind": "library"
   },
   "lsp": {
-    "revision": "ca65583aa776c61015b8e261d8b53f8db707edb0",
+    "revision": "61d3bdabfc46f30296a6c9ce4c80dfe7004de590",
     "kind": "library"
   },
   "mail": {
