@@ -112,7 +112,7 @@
     "kind": "library"
   },
   "ignore": {
-    "revision": "0e1987e98205a88d784bfa777fc1bad0cd349dbc",
+    "revision": "bda961479cc75440ebb1a54bc4cd8c05a6cda650",
     "kind": "library"
   },
   "image": {
@@ -264,7 +264,7 @@
     "revision": "31455700c599a906b20275f78cf5271a7e667f1d"
   },
   "walkdir": {
-    "revision": "15a4add0cd8b17357c94aa5cba532671ed44c812",
+    "revision": "433bbd5318bd9ae68ce6f5ccbf868d8b904600ad",
     "kind": "library"
   },
   "wasm": {
