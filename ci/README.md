@@ -41,7 +41,10 @@ Workflow syntax is checked with actionlint. Logs and reports are retained for
 14 days even when verification fails.
 For goir, the artifact also includes `_artifact/codegen.tsv` with backend
 comparisons and median compilation timings, and `_artifact/encoded-code.tsv`
-with linked ABI0 symbol sizes measured by `go tool nm`.
+with linked ABI0 symbol sizes measured by `go tool nm`. The typed corpus writes
+`_artifact/typed-phases.tsv` with repeated per-stage compilation timings and
+retained context capacity; `_artifact/runtime-boundary.txt` records the Go
+version, pointer-leaf GC probe and expected ABIInternal selector rejection.
 Failed native fixtures retain generated sources, exact cases and any reduced
 reproducer in the same CI artifact.
 

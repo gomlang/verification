@@ -78,7 +78,12 @@ jobs:
             libraries/verification/_artifact/verification/
             libraries/${{ inputs.module }}/_artifact/codegen.tsv
             libraries/${{ inputs.module }}/_artifact/encoded-code.tsv
+            libraries/${{ inputs.module }}/_artifact/typed-phases.tsv
+            libraries/${{ inputs.module }}/_artifact/runtime-boundary.txt
             libraries/${{ inputs.module }}/_artifact/**/goir-native-*/
             libraries/${{ inputs.module }}/_artifact/**/goir-calls-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-typed-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-runtime-probe-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-module-reduction-*/
           if-no-files-found: ignore
           retention-days: 14
