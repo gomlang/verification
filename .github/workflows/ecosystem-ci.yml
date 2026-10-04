@@ -80,10 +80,17 @@ jobs:
             libraries/${{ inputs.module }}/_artifact/encoded-code.tsv
             libraries/${{ inputs.module }}/_artifact/typed-phases.tsv
             libraries/${{ inputs.module }}/_artifact/runtime-boundary.txt
+            libraries/${{ inputs.module }}/_artifact/global-allocation.tsv
+            libraries/${{ inputs.module }}/_artifact/pipeline-bench.tsv
+            libraries/${{ inputs.module }}/_artifact/seeded-fuzz.tsv
+            libraries/${{ inputs.module }}/_artifact/scalar-native.txt
             libraries/${{ inputs.module }}/_artifact/**/goir-native-*/
             libraries/${{ inputs.module }}/_artifact/**/goir-calls-*/
             libraries/${{ inputs.module }}/_artifact/**/goir-typed-*/
             libraries/${{ inputs.module }}/_artifact/**/goir-runtime-probe-*/
             libraries/${{ inputs.module }}/_artifact/**/goir-module-reduction-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-global-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-scalar-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-fuzz-*/
           if-no-files-found: ignore
           retention-days: 14

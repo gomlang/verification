@@ -45,6 +45,11 @@ with linked ABI0 symbol sizes measured by `go tool nm`. The typed corpus writes
 `_artifact/typed-phases.tsv` with repeated per-stage compilation timings and
 retained context capacity; `_artifact/runtime-boundary.txt` records the Go
 version, pointer-leaf GC probe and expected ABIInternal selector rejection.
+`_artifact/global-allocation.tsv` compares both allocators with 21-sample
+P50/P95 and weighted spill statistics. `_artifact/pipeline-bench.tsv` covers
+the shared analysis stage and cache statistics; `_artifact/seeded-fuzz.tsv`
+records the deterministic module corpus and `_artifact/scalar-native.txt`
+records checked arithmetic and native trap validation.
 Failed native fixtures retain generated sources, exact cases and any reduced
 reproducer in the same CI artifact.
 
