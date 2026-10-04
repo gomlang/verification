@@ -27,31 +27,85 @@ pub fn run_command(
     log: string,
     race: bool,
 ) -> Result[string, string] {
+    run_command_timeout(
+        context,
+        arguments,
+        directory,
+        binary,
+        log,
+        race,
+        time::Duration::from_seconds(600),
+    )
+}
+
+pub fn run_command_timeout(
+    context: Verification,
+    arguments: Vec[string],
+    directory: string,
+    binary: string,
+    log: string,
+    race: bool,
+    timeout: time::Duration,
+) -> Result[string, string] {
     let started = time::Instant::now();
-    let mut command = process::Command::new(arguments[0]).args(
-        arguments.slice(1, arguments.len()).to_vec(),
-    ).current_dir(directory).env("GOML_HOME", context.home).env("GOML_VERIFY_ROOT", context.root).env(
-        "GOML_VERIFY_DRIVER",
-        context.goml,
-    ).env("GOML_VERIFY_BINARY", binary).env("GOML_BUILD_JOBS", "2").env("GOML_SIMD", "native").input(
-        bytes::Bytes::new(),
+    if arguments.is_empty() {
+        return Result::Err("cannot run an empty command");
+    }
+    fs::create_dir_all(path::parent(log).unwrap_or(directory)).map_err(|error| error.to_string())?;
+    let stdout_log = path::absolute_structured(log + ".stdout").map_err(|error| error.to_string())?;
+    let stderr_log = path::absolute_structured(log + ".stderr").map_err(|error| error.to_string())?;
+    fs::write_bytes_structured(stdout_log, bytes::Bytes::new()).map_err(|error| error.to_string())?;
+    fs::write_bytes_structured(stderr_log, bytes::Bytes::new()).map_err(|error| error.to_string())?;
+    let redirected = Vec::from_array(
+        [
+            "-c",
+            "exec >\"$1\" 2>\"$2\"; shift 2; exec \"$@\"",
+            "verification",
+            stdout_log,
+            stderr_log,
+        ],
     );
+    redirected.extend(arguments);
+    let mut command = process::Command::new("sh").args(redirected).current_dir(directory).env(
+        "GOML_HOME",
+        context.home,
+    ).env("GOML_VERIFY_ROOT", context.root).env("GOML_VERIFY_DRIVER", context.goml).env(
+        "GOML_VERIFY_BINARY",
+        binary,
+    ).env("GOML_BUILD_JOBS", "2").env("GOML_SIMD", "native").input(bytes::Bytes::new());
     if race {
         command = command.env("GOFLAGS", env::var_structured("GOFLAGS").unwrap_or("") + " -race").env(
             "GORACE",
             "halt_on_error=1 atexit_sleep_ms=0",
         );
     }
-    let output = command.output_timeout_structured(time::Duration::from_seconds(600));
-    let (status, stdout_bytes, stderr_bytes) = match output {
-        Result::Ok(value) => (value.status().code().unwrap_or(-1), value.stdout(), value.stderr()),
+    let output = command.output_timeout_structured(timeout);
+    let (status, launch_stdout, launch_stderr, timed_out) = match output {
+        Result::Ok(value) => (
+            value.status().code().unwrap_or(-1),
+            value.stdout(),
+            value.stderr(),
+            false,
+        ),
         Result::Err(error) => (
             -1,
             bytes::Bytes::new(),
             bytes::Bytes::from_string(error.to_string()),
+            error.kind() == io::ErrorKind::TimedOut,
         ),
     };
-    fs::create_dir_all(path::parent(log).unwrap_or(directory)).map_err(|error| error.to_string())?;
+    let stdout = bytes::Builder::new();
+    stdout.extend(
+        fs::read_bytes_structured(stdout_log).map_err(|error| error.to_string())?.as_slice(),
+    );
+    stdout.extend(launch_stdout.as_slice());
+    let stdout_bytes = stdout.finish();
+    let stderr = bytes::Builder::new();
+    stderr.extend(
+        fs::read_bytes_structured(stderr_log).map_err(|error| error.to_string())?.as_slice(),
+    );
+    stderr.extend(launch_stderr.as_slice());
+    let stderr_bytes = stderr.finish();
     let logged = bytes::Builder::new();
     logged.extend(stdout_bytes.slice(0, stdout_bytes.len()));
     logged.extend(stderr_bytes.slice(0, stderr_bytes.len()));
@@ -64,7 +118,11 @@ pub fn run_command(
                     ("cwd", json::to_value(directory)?),
                     ("milliseconds", json::to_value(started.elapsed().as_milliseconds())?),
                     ("exit_code", json::to_value(status)?),
+                    ("timed_out", json::to_value(timed_out)?),
+                    ("timeout_ms", json::to_value(timeout.as_milliseconds())?),
                     ("log", json::to_value(log)?),
+                    ("stdout_log", json::to_value(stdout_log)?),
+                    ("stderr_log", json::to_value(stderr_log)?),
                 ],
             ),
         ),
@@ -415,6 +473,13 @@ pub fn verify_all(root: string, libraries: string, home: string, options: Option
                 ("registry_home", json::to_value(home)?),
                 ("run_directory", json::to_value(logs)?),
                 ("success", json::to_value(result.is_ok())?),
+                (
+                    "error",
+                    match result {
+                        Result::Ok(()) => json::Value::Null,
+                        Result::Err(error) => json::Value::String(error),
+                    },
+                ),
                 ("race", json::to_value(options.race)?),
                 ("commands", json::to_value(context.records)?),
             ],

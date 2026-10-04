@@ -8,6 +8,7 @@ use std::json;
 use std::path;
 use std::task;
 use std::testing;
+use std::time;
 use std::toml;
 
 fn fixture() -> string {
@@ -644,6 +645,29 @@ fn repeated_runs_preserve_original_logs_and_their_reports() -> () {
 }
 
 #[test]
+fn report_records_failures_between_successful_commands() -> () {
+    let root = fixture();
+    let (_, report) = failed_report(root, "true");
+    let commands = testing::expect_some(
+        json::field(report, "commands").and_then(|value| json::as_array(value)),
+        "recorded commands",
+    );
+    testing::assert_eq(commands.len(), 4);
+    for command in commands {
+        testing::assert_eq(
+            json::field(command, "exit_code").and_then(|value| json::as_int(value)).unwrap_or(-1),
+            0,
+        );
+    }
+    let error = testing::expect_some(
+        json::field(report, "error").and_then(|value| json::as_string(value)),
+        "failure reason retained in report",
+    );
+    testing::assert(error.contains("_artifact/build/pkg"));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn expanded_libraries_are_unique_and_available_to_the_runner() -> () {
     let libraries = verify::modules();
     testing::assert_eq(libraries.len(), 70);
@@ -706,5 +730,88 @@ fn malformed_command_output_is_logged_verbatim_and_rejected() -> () {
     let output = testing::expect_ok(fs::read_bytes_structured(log), "verbatim output");
     testing::assert(output.to_vec() == Vec::from_array([255.to_u8()]));
     testing::assert_eq(context.records.len(), 1);
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn timed_out_commands_preserve_partial_output_and_deadline_evidence() -> () {
+    let root = fixture();
+    let context = verify::Verification {
+        root,
+        libraries: root,
+        home: root,
+        goml: "/not-used",
+        records: Vec::new(),
+    };
+    let log = path::join(root, "timeout.log");
+    testing::assert_err(
+        verify::run_command_timeout(
+            context,
+            Vec::from_array(["sh", "-c", "printf started; printf diagnostic >&2; exec sleep 5"]),
+            root,
+            "",
+            log,
+            false,
+            time::Duration::from_milliseconds(500),
+        ),
+    );
+    let output = testing::expect_ok(fs::read_file_structured(log), "partial timeout output");
+    testing::assert(output.contains("started"));
+    testing::assert(output.contains("diagnostic"));
+    testing::assert(output.contains("timed out"));
+    testing::assert_eq(
+        testing::expect_ok(fs::read_file_structured(log + ".stdout"), "raw timeout stdout"),
+        "started",
+    );
+    testing::assert_eq(
+        testing::expect_ok(fs::read_file_structured(log + ".stderr"), "raw timeout stderr"),
+        "diagnostic",
+    );
+    testing::assert_eq(context.records.len(), 1);
+    testing::assert(
+        json::field(context.records[0], "timed_out").and_then(|value| json::as_bool(value))
+            == Option::Some(true),
+    );
+    testing::assert(
+        json::field(context.records[0], "timeout_ms").and_then(|value| json::as_int(value))
+            == Option::Some(500),
+    );
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn log_redirection_keeps_command_arguments_literal() -> () {
+    let root = fixture();
+    let context = verify::Verification {
+        root,
+        libraries: root,
+        home: root,
+        goml: "/not-used",
+        records: Vec::new(),
+    };
+    let log = path::join(root, "quote ' space $value `text`/output.log");
+    let argument = "quote ' double \" $HOME $(printf expanded) ; trailing\\";
+    let output = testing::expect_ok(
+        verify::run_command(
+            context,
+            Vec::from_array(
+                ["sh", "-c", "printf '%s' \"$1\"; printf diagnostic >&2", "argument", argument],
+            ),
+            root,
+            "",
+            log,
+            false,
+        ),
+        "literal command argument",
+    );
+    testing::assert_eq(output, argument);
+    testing::assert_eq(
+        testing::expect_ok(fs::read_file_structured(log), "combined literal output"),
+        argument + "diagnostic",
+    );
+    testing::assert(
+        json::field(context.records[0], "timed_out").and_then(|value| json::as_bool(value))
+            == Option::Some(false),
+    );
     testing::assert_ok(fs::remove_dir_all(root));
 }

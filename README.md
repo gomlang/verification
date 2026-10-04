@@ -30,7 +30,14 @@ tests participate in the race pass. `--no-race` explicitly skips this additional
 Individual test deadlines are 300 seconds; command deadlines are 600 seconds.
 Failures write captured output and return a nonzero status. The final JSON
 report records success, selected modules, registry identity, command durations,
-exit codes and log paths under `_artifact/verification/`.
+exit codes and log paths under `_artifact/verification/`. Its `error` field retains
+the failure reason, including failures between commands; it is `null` on success.
+The report's `race` field records the requested configuration. Completed race
+build/test commands and their exit codes establish which race checks ran.
+Each command records `timed_out` and `timeout_ms`. The Linux runner uses a fixed
+POSIX shell wrapper with separate arguments to redirect stdout and stderr into
+`stdout_log` and `stderr_log` files as the command runs. These raw streams survive
+command timeouts; the combined `log` also includes process timeout/launch errors.
 Each invocation retains its logs and original `report.json` in a unique, visible
 `runs/run-.../` directory, also recorded as `run_directory` in the report. Later
 runs cannot overwrite logs referenced by earlier reports. The default
