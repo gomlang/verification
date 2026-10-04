@@ -173,7 +173,7 @@ fn example_name(name: string) -> string {
 }
 
 fn sample_build_arguments(name: string, arguments: Vec[string]) -> Vec[string] {
-    if name != "goml_stats" && name != "explorer" && !native_fixture(name) {
+    if !applications().contains(name) && !native_fixture(name) {
         arguments.push("--example");
         arguments.push(example_name(name));
     }
@@ -186,7 +186,7 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
 ] {
     io::println("Verifying " + name);
     let library = path::join(context.libraries, name);
-    let single = name == "goml_stats" || name == "explorer";
+    let single = applications().contains(name);
     let fixture = native_fixture(name);
     let sample = if fixture {
         path::join(library, "testdata/downstream/native")

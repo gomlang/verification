@@ -24,8 +24,7 @@ pub fn parse_options(arguments: Vec[string], root: string) -> Result[Options, st
         list: false,
     };
     let valid = modules();
-    valid.push("goml_stats");
-    valid.push("explorer");
+    valid.extend(applications());
     let mut index = 0;
     while index < arguments.len() {
         let argument = arguments[index];

@@ -183,6 +183,9 @@ def dependency_closure(root, module, records):
                 for coordinate in dependencies:
                     if coordinate.startswith("ecosystem::"):
                         dependency = coordinate.removeprefix("ecosystem::")
+                        kind = records.get(dependency, {}).get("kind")
+                        if kind in {"application", "catalog"}:
+                            raise ValueError(f"{kind} cannot satisfy library dependency {coordinate} required by {manifest}")
                         pending.append((dependency, f"dependency {dependency} required by {manifest}"))
     return sorted(visited)
 

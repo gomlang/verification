@@ -55,6 +55,15 @@ class InfrastructureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown ecosystem repository"):
             ecosystem.dependency_closure(self.root, "app", self.record("app"))
 
+    def test_ecosystem_dependencies_cannot_resolve_to_applications_or_catalogs(self):
+        for name, kind in [("explorer", "application"), ("ecosystem", "catalog")]:
+            with self.subTest(kind=kind):
+                self.manifest("app", f'[dependencies]\n"ecosystem::{name}"="0.1.0"\n')
+                self.manifest(name, f'[module]\npath="example::{name}"\n')
+                records = self.record("app") | {name: {"kind": kind, "revision": "a" * 40}}
+                with self.assertRaisesRegex(ValueError, f"ecosystem::{name}.*app/goml.toml"):
+                    ecosystem.dependency_closure(self.root, "app", records)
+
     def test_missing_registered_dependency_is_a_failure_with_source(self):
         self.manifest("app", '[dependencies]\n"ecosystem::core"="0.1.0"\n', "testdata/downstream/native")
         self.manifest("app", '[module]\npath="example::app"\n')

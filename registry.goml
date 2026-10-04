@@ -19,6 +19,10 @@ pub struct CapturedModule {
     pub files: Vec[SourceFile],
 }
 
+pub fn applications() -> Vec[string] {
+    Vec::from_array(["goml_stats", "explorer"])
+}
+
 pub fn modules() -> Vec[string] {
     Vec::from_array(
         [
@@ -217,6 +221,13 @@ pub fn dependency_closure(libraries: string, selected: Vec[string]) -> Result[Ve
                                 "ecosystem::".byte_len(),
                                 coordinate.byte_len(),
                             );
+                            if applications().contains(dependency) {
+                                return Result::Err(
+                                    "application cannot satisfy library dependency " + coordinate
+                                        + " required by "
+                                        + source,
+                                );
+                            }
                             pending.push(
                                 (dependency, "dependency " + dependency + " required by " + source),
                             );
@@ -385,7 +396,7 @@ pub fn registry_snapshot(libraries: string, root: string, selected: Vec[string])
 ] {
     let names = Vec::new();
     for name in dependency_closure(libraries, selected)? {
-        if name != "goml_stats" && name != "explorer" {
+        if !applications().contains(name) {
             names.push(name);
         }
     }

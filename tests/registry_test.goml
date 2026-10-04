@@ -182,6 +182,29 @@ fn consumer_selection_discovers_dependencies_without_publishing_consumer() -> ()
 }
 
 #[test]
+fn applications_cannot_satisfy_ecosystem_library_dependencies() -> () {
+    let root = fixture();
+    write_manifest(root, "explorer", "[module]\npath = \"example::explorer\"\n");
+    write_manifest(
+        root,
+        "one",
+        "[module]\npath = \"ecosystem::one\"\n[dev-dependencies]\n\"ecosystem::explorer\" = \"0.1.0\"\n",
+    );
+    for selected in Vec::from_array(
+        [Vec::from_array(["one"]), Vec::from_array(["explorer", "one"])],
+    ) {
+        let error = testing::expect_err(
+            verify::registry_snapshot(root, root, selected),
+            "a successful snapshot must not omit a declared ecosystem dependency",
+        );
+        testing::assert(error.contains("ecosystem::explorer"));
+        testing::assert(error.contains("one/goml.toml"));
+    }
+    testing::assert(!fs::exists(path::join(root, "_artifact/registry-snapshots")));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
 fn dependency_discovery_and_snapshot_exclude_generated_directories_and_symlinks() -> () {
     let root = fixture();
     write_manifest(
