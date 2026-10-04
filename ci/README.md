@@ -24,6 +24,9 @@ completion prerequisites are installed for their corresponding jobs.
 Library jobs run the existing format, test, independent downstream verification,
 cached-build and smoke checks. Existing race, PTY, SIMD, protocol and reference
 checks remain enabled; SQL pool tests also run under the race detector.
+The Wasm interpreter replays its frozen official conformance fixtures in its
+conformance example tests, through both `goml test` and `goml verify`. The ordinary
+checks use GoML and retained fixtures; WABT is needed only when regenerating them.
 The verification and ecosystem catalog jobs run infrastructure regression tests,
 the verifier's own GoML tests, and module/dependency/catalog consistency checks.
 Workflow syntax is checked with actionlint. Logs and reports are retained for

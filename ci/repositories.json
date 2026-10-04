@@ -72,7 +72,7 @@
     "kind": "library"
   },
   "ecosystem": {
-    "revision": "f8b44e8ada6154c423f4689fcb30d05415964424",
+    "revision": "d5a4133f7dda87f61411757bac429c5d6d08290a",
     "kind": "catalog"
   },
   "explorer": {
@@ -261,6 +261,10 @@
   },
   "walkdir": {
     "revision": "15a4add0cd8b17357c94aa5cba532671ed44c812",
+    "kind": "library"
+  },
+  "wasm": {
+    "revision": "bb896846c9b52cad2f2956840524dfa0f48b4e8b",
     "kind": "library"
   },
   "web": {
