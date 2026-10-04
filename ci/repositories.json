@@ -108,7 +108,7 @@
     "kind": "library"
   },
   "http": {
-    "revision": "bc80dcebf17fc4d7dc392c506a7edc1075343620",
+    "revision": "0548b3a66294a333822c0977cbdabf7afecdd0c2",
     "kind": "library"
   },
   "ignore": {
