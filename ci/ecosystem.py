@@ -46,10 +46,19 @@ def run(arguments, cwd=None, env=None, capture=False):
 
 def checkout(root, name, revision):
     destination = root / name
+    if destination.is_symlink():
+        raise ValueError(f"dependency checkout is a symbolic link: {name}")
     if destination.exists():
         actual = run(["git", "rev-parse", "HEAD"], cwd=destination, capture=True).strip()
         if actual != revision:
             raise ValueError(f"dependency checkout has unexpected revision: {name}")
+        top = run(["git", "rev-parse", "--show-toplevel"], cwd=destination, capture=True).strip()
+        if Path(top).resolve() != destination.resolve():
+            raise ValueError(f"dependency checkout is not a repository root: {name}")
+        changes = run(["git", "status", "--porcelain=v1", "--untracked-files=all"],
+                      cwd=destination, capture=True)
+        if changes:
+            raise ValueError(f"dependency checkout has local changes: {name}")
         return
     destination.mkdir()
     run(["git", "init", "--quiet", destination], capture=True)

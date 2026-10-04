@@ -131,6 +131,54 @@ class InfrastructureTests(unittest.TestCase):
                 ecosystem.checkout(self.root, "dependency", "a" * 40)
         self.assertEqual(run.call_count, 1)
 
+    def git_fixture(self, name):
+        directory = self.root / name
+        directory.mkdir()
+        def git(*arguments):
+            return subprocess.run(["git", *arguments], cwd=directory, check=True,
+                                  text=True, capture_output=True).stdout.strip()
+        git("init", "--quiet")
+        (directory / "source.goml").write_text("package original;\n")
+        (directory / ".gitignore").write_text("_artifact/\n")
+        git("add", "source.goml", ".gitignore")
+        git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+            "commit", "--quiet", "-m", "fixture")
+        return directory, git("rev-parse", "HEAD"), git
+
+    def test_reused_dependency_requires_clean_tracked_and_untracked_sources(self):
+        for change in ["modified", "staged", "untracked"]:
+            with self.subTest(change=change):
+                directory, revision, git = self.git_fixture(change)
+                source = directory / ("extra.goml" if change == "untracked" else "source.goml")
+                source.write_text("package changed;\n")
+                if change == "staged":
+                    git("add", "source.goml")
+                with self.assertRaisesRegex(ValueError, "dependency checkout has local changes"):
+                    ecosystem.checkout(self.root, change, revision)
+                self.assertEqual(source.read_text(), "package changed;\n")
+                self.assertEqual(git("rev-parse", "HEAD"), revision)
+
+    def test_clean_dependency_reuse_preserves_ignored_build_artifacts(self):
+        directory, revision, git = self.git_fixture("dependency")
+        output = directory / "_artifact/generated.goml"
+        output.parent.mkdir()
+        output.write_text("generated output")
+        ecosystem.checkout(self.root, "dependency", revision)
+        self.assertEqual(output.read_text(), "generated output")
+        self.assertEqual(git("rev-parse", "HEAD"), revision)
+
+    def test_dependency_directory_cannot_borrow_a_parent_git_repository(self):
+        directory, revision, _ = self.git_fixture("parent")
+        (directory / "dependency").mkdir()
+        with self.assertRaisesRegex(ValueError, "not a repository root"):
+            ecosystem.checkout(directory, "dependency", revision)
+
+    def test_dependency_checkout_does_not_follow_directory_symlinks(self):
+        directory, revision, _ = self.git_fixture("original")
+        (self.root / "dependency").symlink_to(directory, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "symbolic link"):
+            ecosystem.checkout(self.root, "dependency", revision)
+
     def test_native_downloads_only_dependency_closure(self):
         self.manifest("app", '[dependencies]\n"ecosystem::core"="0.1.0"\n')
         self.manifest("core", '[module]\npath="ecosystem::core"\n')

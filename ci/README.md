@@ -10,6 +10,10 @@ The job checks out the triggering commit or pull-request merge commit as the
 candidate. It preserves that checkout and fetches sibling repositories at the
 commits in `repositories.json`. No developer checkout, registry, credential or
 local GoML installation is required. `checkouts.json` records every tested commit.
+Existing dependency checkouts must be repository roots at the pinned revision
+with no staged, modified or untracked files; ignored build artifacts are preserved.
+Invalid checkouts fail without resetting or deleting local changes. The triggering
+candidate remains exempt from dependency reuse checks.
 
 `toolchain.json` pins the published GoML Linux amd64 archive and its SHA-256.
 Installation verifies the archive before extraction and finalizes the toolchain
