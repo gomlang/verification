@@ -77,5 +77,8 @@ jobs:
             libraries/verification/_artifact/ci/
             libraries/verification/_artifact/verification/
             libraries/${{ inputs.module }}/_artifact/codegen.tsv
+            libraries/${{ inputs.module }}/_artifact/encoded-code.tsv
+            libraries/${{ inputs.module }}/_artifact/**/goir-native-*/
+            libraries/${{ inputs.module }}/_artifact/**/goir-calls-*/
           if-no-files-found: ignore
           retention-days: 14
