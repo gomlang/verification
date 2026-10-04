@@ -43,6 +43,12 @@ Each invocation retains its logs and original `report.json` in a unique, visible
 runs cannot overwrite logs referenced by earlier reports. The default
 `_artifact/verification/report.json` remains a copy of the latest report;
 `GOML_VERIFY_REPORT` selects a different copy path for independent module batches.
+Before the first verification command, both report locations receive the current
+run's initial record with `completed: false` and `success: false`. Finalization
+sets `completed: true` for either success or a handled failure. Interrupted runs
+retain their initial metadata and raw stream logs instead of the previous run's
+success report; command records are finalized when verification returns. Each
+report file is replaced atomically so readers see complete JSON.
 
 Reference fixtures retain results from independent implementations, along with
 their provenance. Native tests consume those fixed expectations; they do not

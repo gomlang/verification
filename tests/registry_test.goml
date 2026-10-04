@@ -6,6 +6,7 @@ use std::crypto::hash;
 use std::fs;
 use std::json;
 use std::path;
+use std::process;
 use std::task;
 use std::testing;
 use std::time;
@@ -664,6 +665,59 @@ fn report_records_failures_between_successful_commands() -> () {
         "failure reason retained in report",
     );
     testing::assert(error.contains("_artifact/build/pkg"));
+    testing::assert_ok(fs::remove_dir_all(root));
+}
+
+#[test]
+fn current_incomplete_report_is_visible_before_the_first_command() -> () {
+    let root = fixture();
+    let reports = path::join(root, "_artifact/verification");
+    testing::assert_ok(fs::create_dir_all(reports));
+    testing::assert_ok(
+        fs::write_file_structured(
+            path::join(reports, "report.json"),
+            "{\"success\":true,\"run_directory\":\"previous-run\"}",
+        ),
+    );
+    let driver = path::join(root, "driver");
+    testing::assert_ok(
+        fs::write_file_structured(
+            driver,
+            "#!/bin/sh\ncp \"$GOML_VERIFY_ROOT/_artifact/verification/report.json\" \"$GOML_VERIFY_ROOT/started.json\"\nexit 7\n",
+        ),
+    );
+    testing::assert(
+        testing::expect_ok(
+            process::Command::new("chmod").args(Vec::from_array(["755", driver])).status_structured(),
+            "executable test driver",
+        ).success(),
+    );
+    let (_, finished) = failed_report(root, driver);
+    let started = testing::expect_ok(
+        json::parse(
+            testing::expect_ok(
+                fs::read_file_structured(path::join(root, "started.json")),
+                "initial report",
+            ),
+        ),
+        "initial report JSON",
+    );
+    testing::assert(
+        json::field(started, "completed").and_then(|value| json::as_bool(value))
+            == Option::Some(false),
+    );
+    testing::assert(
+        json::field(started, "success").and_then(|value| json::as_bool(value))
+            == Option::Some(false),
+    );
+    testing::assert(
+        json::field(finished, "completed").and_then(|value| json::as_bool(value))
+            == Option::Some(true),
+    );
+    testing::assert(
+        json::field(started, "run_directory").and_then(|value| json::as_string(value))
+            == json::field(finished, "run_directory").and_then(|value| json::as_string(value)),
+    );
     testing::assert_ok(fs::remove_dir_all(root));
 }
 
