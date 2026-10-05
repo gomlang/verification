@@ -96,6 +96,10 @@ pub fn modules() -> Vec[string] {
             "s3",
             "wasm",
             "goir",
+            "postgres",
+            "protobuf",
+            "oauth2",
+            "cron",
         ],
     )
 }

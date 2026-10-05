@@ -28,6 +28,11 @@ fail the job instead of silently omitting nested native modules.
 This includes the HTML parsing/sanitization, image codec, YAML and JWT adapters.
 LLVM, SQLite and shell
 completion prerequisites are installed for their corresponding jobs.
+PostgreSQL jobs alone start a PostgreSQL 16 service, wait for its health check,
+and pass the mapped port through `GOML_POSTGRES_TEST_DSN`. Verification rejects a
+missing DSN before running commands. PostgreSQL adapter tests and downstream
+fixtures use that real server; the Protocol Buffers Go oracle and OAuth 2.0
+HTTP/TLS fixtures are also included in normal and race checks.
 
 Library jobs run the existing format, test, independent downstream verification,
 cached-build and smoke checks. Existing race, PTY, SIMD, protocol and reference
@@ -39,6 +44,13 @@ The verification and ecosystem catalog jobs run infrastructure regression tests,
 the verifier's own GoML tests, and module/dependency/catalog consistency checks.
 Workflow syntax is checked with actionlint. Logs and reports are retained for
 14 days even when verification fails.
+
+For a new repository, publish its tested source commit before adding that commit
+to `repositories.json`: preparation fetches every inventory entry. Publish the
+matching verification changes next, then create the new repository's caller
+workflow with that published verification SHA in both reference fields. This
+keeps the initial library and infrastructure workflows free of unpublished
+dependency revisions. Existing toolchain pins do not change when adding libraries.
 For goir, the artifact also includes `_artifact/codegen.tsv` with backend
 comparisons and median compilation timings, and `_artifact/encoded-code.tsv`
 with linked ABI0 symbol sizes measured by `go tool nm`. The typed corpus writes

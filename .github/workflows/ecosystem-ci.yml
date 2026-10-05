@@ -22,6 +22,20 @@ jobs:
       GOMAXPROCS: '2'
       GOML_BUILD_JOBS: '2'
       GOML_TEST_JOBS: '2'
+    services:
+      postgres:
+        image: ${{ inputs.module == 'postgres' && 'postgres:16' || '' }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: goml_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d goml_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - name: Check out candidate
         uses: actions/checkout@v7
@@ -68,6 +82,7 @@ jobs:
         env:
           MODULE: ${{ inputs.module }}
           GOML: ${{ runner.temp }}/goml/bin/goml
+          GOML_POSTGRES_TEST_DSN: ${{ inputs.module == 'postgres' && format('postgresql://postgres:postgres@127.0.0.1:{0}/goml_test?sslmode=disable', job.services.postgres.ports['5432']) || '' }}
       - name: Upload verification logs
         if: always()
         uses: actions/upload-artifact@v7

@@ -226,10 +226,12 @@ def validate_catalog(root, records, available):
 
 
 def verify(root, module, goml, records):
+    env = os.environ | {"GOMLANG_LIBRARIES": str(root)}
+    if module == "postgres" and not env.get("GOML_POSTGRES_TEST_DSN", "").strip():
+        raise ValueError("postgres verification requires GOML_POSTGRES_TEST_DSN for a live PostgreSQL 16 server")
     verifier = root / "verification"
     output = verifier / "_artifact/ci"
     output.mkdir(parents=True, exist_ok=True)
-    env = os.environ | {"GOMLANG_LIBRARIES": str(root)}
     run([goml, "fmt", "--check"], cwd=verifier, env=env)
     run([goml, "build"], cwd=verifier, env=env)
     binary = verifier / "_artifact/bin/verification"

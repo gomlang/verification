@@ -204,18 +204,28 @@ fn race_enabled(name: string) -> bool {
             "s3",
             "html",
             "image",
+            "postgres",
+            "protobuf",
+            "oauth2",
+            "cron",
         ],
     ).contains(name)
 }
 
 fn native_fixture(name: string) -> bool {
-    Vec::from_array(["bench", "llvm", "redis", "sql", "sqlite", "web", "yaml"]).contains(name)
+    Vec::from_array(["bench", "llvm", "postgres", "redis", "sql", "sqlite", "web", "yaml"]).contains(
+        name,
+    )
 }
 
 fn native_test_packages(name: string) -> Vec[string] {
-    if name == "request" {
+    if name == "protobuf" {
+        Vec::from_array(["./..."])
+    } else if name == "request" || name == "oauth2" {
         Vec::from_array(["./testserver"])
-    } else if Vec::from_array(["sqlite", "llvm", "html", "image", "yaml", "jwt"]).contains(name) {
+    } else if Vec::from_array(["sqlite", "llvm", "html", "image", "yaml", "jwt", "postgres"]).contains(
+        name,
+    ) {
         Vec::from_array(["./adapter"])
     } else {
         Vec::new()
@@ -298,10 +308,22 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
         )?;
     }
     let native_packages = native_test_packages(name);
+    let native_directory = if name == "protobuf" {
+        path::join(library, "tools/oracle")
+    } else {
+        library
+    };
     if !native_packages.is_empty() {
         let command = Vec::from_array(["go", "test", "-count=1"]);
         command.extend(native_packages);
-        run_command(context, command, library, binary, path::join(logs, "native-tests.log"), false)?;
+        run_command(
+            context,
+            command,
+            native_directory,
+            binary,
+            path::join(logs, "native-tests.log"),
+            false,
+        )?;
     }
     if !single {
         driver(
@@ -443,7 +465,7 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
             run_command(
                 context,
                 command,
-                library,
+                native_directory,
                 race_binary,
                 path::join(logs, "native-race.log"),
                 true,

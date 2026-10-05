@@ -255,6 +255,25 @@ class InfrastructureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "runner/catalog mismatch"):
             ecosystem.validate_catalog(self.root, self.record("example"), {"other"})
 
+    def test_postgres_verification_requires_live_service_before_running_commands(self):
+        for dsn in [None, "", " \t\n"]:
+            environment = {} if dsn is None else {"GOML_POSTGRES_TEST_DSN": dsn}
+            with self.subTest(dsn=dsn), patch.dict(ecosystem.os.environ, environment, clear=True):
+                with patch.object(ecosystem, "run") as run:
+                    with self.assertRaisesRegex(ValueError, "GOML_POSTGRES_TEST_DSN"):
+                        ecosystem.verify(self.root, "postgres", Path("/goml"), self.record("postgres"))
+                run.assert_not_called()
+
+    def test_postgres_live_service_is_passed_to_all_verification_commands(self):
+        dsn = "postgresql://postgres:postgres@127.0.0.1:15432/goml_test?sslmode=disable"
+        with patch.dict(ecosystem.os.environ, {"GOML_POSTGRES_TEST_DSN": dsn}, clear=True):
+            with patch.object(ecosystem, "run") as run:
+                ecosystem.verify(self.root, "postgres", Path("/goml"), self.record("postgres"))
+        self.assertEqual(run.call_count, 3)
+        for call in run.call_args_list:
+            self.assertEqual(call.kwargs["env"]["GOML_POSTGRES_TEST_DSN"], dsn)
+        self.assertEqual(run.call_args.args[0][-1], "postgres")
+
     def test_checksum_failure_prevents_toolchain_execution(self):
         config = self.root / "toolchain.json"
         config.write_text(json.dumps({"version": "0.1.57", "sha256": "a" * 64}))

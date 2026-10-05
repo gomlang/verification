@@ -11,7 +11,7 @@ done
 if [[ "$module" == llvm ]]; then
     packages+=(llvm-18-dev clang-18)
 fi
-if [[ "$module" == sql || "$module" == sqlite ]]; then
+if [[ "$module" == sql || "$module" == sqlite || "$module" == postgres ]]; then
     packages+=(libsqlite3-0)
 fi
 if [[ "$module" == cli ]]; then
