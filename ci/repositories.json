@@ -76,7 +76,7 @@
     "kind": "library"
   },
   "ecosystem": {
-    "revision": "e93d82ce09f43de5f4be5e3ca0417435e130ad1a",
+    "revision": "3bc8894b9506054f728bc20c59953a6636e46f8e",
     "kind": "catalog"
   },
   "explorer": {
@@ -104,7 +104,7 @@
     "kind": "library"
   },
   "highlight": {
-    "revision": "a385c2232958839b2696a3bfe6d3d251770e813d",
+    "revision": "b3d862ff4a88630ac23c28601a5c366da871a03d",
     "kind": "library"
   },
   "html": {
@@ -135,8 +135,8 @@
     "revision": "844dac913f5e7410fe699a20dda6f15c9426e96b",
     "kind": "library"
   },
-  "logos": {
-    "revision": "4e3474fc6174f10a899f79d6b7abb602ca1420cf",
+  "lexer": {
+    "revision": "65a6608e9a22b30d7d3e88b6b56446d4fef122ca",
     "kind": "library"
   },
   "lsp": {
@@ -236,7 +236,7 @@
     "kind": "library"
   },
   "syntax": {
-    "revision": "a9036dd0468234cc7b4b792e97ff143715bf0c32",
+    "revision": "6c578408a17bd75fad463274e16fffc4290ed58e",
     "kind": "library"
   },
   "tabwriter": {

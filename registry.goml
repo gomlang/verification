@@ -44,7 +44,7 @@ pub fn modules() -> Vec[string] {
             "markdown",
             "diff",
             "bitflags",
-            "logos",
+            "lexer",
             "tempfile",
             "notify",
             "walkdir",
