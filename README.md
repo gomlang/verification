@@ -4,7 +4,7 @@ This standalone GoML repository owns the local ecosystem test runner, atomic pri
 registry snapshots, race and SIMD checks, and Linux PTY sessions. The
 `reference` package supplies test fixture decoding, structural JSON comparisons
 and an independent VT screen model. It depends only on the standard library.
-Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The eight native fixtures in bench, llvm, postgres, redis, sql, sqlite, web and yaml retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. GoML 0.1.57 or newer and Go 1.26+ are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
+Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The eight native fixtures in bench, llvm, postgres, redis, sql, sqlite, web and yaml retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. Go 1.26+ and a GoML driver supporting the unversioned registry index are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
 
 `GOMLANG_LIBRARIES` and `--goml` accept relative or absolute paths with filesystem
 resolution of symbolic links and `..`. Missing or non-directory components in
@@ -22,10 +22,10 @@ just ecosystem-test color ndarray goml_stats
 just ecosystem-test --no-race terminal explorer
 just ecosystem-test --goml /path/to/goml lsp
 just ecosystem-test --list
-GOML=/path/to/goml-0.1.57/bin/goml just ecosystem-test
+GOML=/path/to/compatible/goml just ecosystem-test
 ```
 
-No module arguments selects all 74 libraries registered in `modules()`, including PostgreSQL, Protocol Buffers, OAuth 2.0 and cron, plus `goml_stats` and Explorer. Each selected module and its transitive dependencies must exist. A named selection supports a partial checkout: only the selected repositories and their dependencies are read. Dependencies include `[dependencies]` and `[dev-dependencies]` from root manifests and nested source modules such as native fixtures. Missing repositories fail with the selected module or referring manifest in the error; a default all-module run never silently skips missing repositories. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites, and invokes `goml verify` for an independent registry boundary check. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
+No module arguments selects all 74 libraries registered in `modules()`, including PostgreSQL, Protocol Buffers, OAuth 2.0 and cron, plus `goml_stats` and Explorer. Each selected module and its transitive dependencies must exist. A named selection supports a partial checkout: only the selected repositories and their dependencies are read. Dependencies include `[dependencies]` and `[dev-dependencies]` from root manifests and nested source modules such as native fixtures. Missing repositories fail with the selected module or referring manifest in the error; a default all-module run never silently skips missing repositories. The runner checks formatting, builds named examples or native fixtures, runs library and example/fixture `#[test]` suites using the same unversioned registry snapshot. It also verifies cached build fingerprints and executes the existing smoke checks. Native PTY checks cover terminal, tui, prompt,
 progress, tui_markdown and Explorer. The ndarray check also compiles SSE2 and
 scalar variants, inspects the linked kernel symbols and repeats reference tests.
 Unicode tools freshly download checksum-pinned inputs on every conformance run.
@@ -88,6 +88,8 @@ README for prerequisites.
 Reference fixtures are stored as gzip streams in one `.gz` file or sequential
 `.gz.0`, `.gz.1`, ... chunks; the test loader requires `gzip` on `PATH`.
 
+For ordinary package development, the default central index is [gomlang/registry](https://github.com/gomlang/registry). Declare dependencies with `true`, run `goml update`, then use `goml test` or `goml run --example <name>`. The private snapshots below are for testing selected working checkouts without changing the user's registry cache. They require a GoML driver supporting the unversioned index format; use the updated development toolchain until a compatible release is published.
+
 To run an individual example manually, first build this runner and obtain its
 private registry path:
 
@@ -97,7 +99,6 @@ export GOML_HOME="$(_artifact/bin/verification --registry-only color)"
 cd ../color
 ../../goml-dev/stage2/bin/goml run --example basic
 ../../goml-dev/stage2/bin/goml test
-../../goml-dev/stage2/bin/goml verify --timeout 300s
 ```
 
 The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
@@ -105,7 +106,7 @@ The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
 paths when these variables are absent. Shared development dependencies are resolved
 from a content-addressed snapshot, whose files are captured once and published
 with an atomic directory rename. Concurrent publishers can only observe a
-complete index. Before reusing a snapshot, the runner checks its index and captured
+complete index. Entries use `path = "ecosystem/<module>"`, and sources live directly under `cache/registry/ecosystem/<module>/`; no package versions or version directories are generated. Before reusing a snapshot, the runner checks its index and captured
 sources against the requested content. Changed files or source links fail with the
 snapshot path; existing contents are preserved. Generated build caches remain
 excluded from this comparison. The snapshot contains the selected ecosystem libraries and their
@@ -132,4 +133,4 @@ repository revisions, preserves the triggering candidate, installs native test
 dependencies, and retains failure logs. Verification and catalog repositories
 run their own infrastructure and consistency checks.
 
-`goml verify` builds and tests copied examples and explicit fixtures as independent modules. Each invocation creates a second isolated snapshot under the library target directory, with workspace resolution disabled and local requirements normalized to snapshot versions. Example test data remains beside the example; the reference helpers locate it from both ordinary module tests and materialized downstream tests. Programs are run explicitly by this runner for smoke, PTY and SIMD checks.
+Ordinary `goml test` builds and tests named examples. Native downstream fixtures are separate modules; the runner explicitly builds and tests them in their own directories against its snapshot. It disables workspace discovery for child commands. Programs are run explicitly by this runner for smoke, PTY and SIMD checks.

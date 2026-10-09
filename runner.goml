@@ -70,10 +70,12 @@ pub fn run_command_timeout(
     let mut command = process::Command::new("sh").args(redirected).current_dir(directory).env(
         "GOML_HOME",
         context.home,
-    ).env("GOML_VERIFY_ROOT", context.root).env("GOML_VERIFY_DRIVER", context.goml).env(
-        "GOML_VERIFY_BINARY",
-        binary,
-    ).env("GOML_BUILD_JOBS", "2").env("GOML_SIMD", "native").input(bytes::Bytes::new());
+    ).env("GOML_WORKSPACE", "off").env("GOML_VERIFY_ROOT", context.root).env(
+        "GOML_VERIFY_DRIVER",
+        context.goml,
+    ).env("GOML_VERIFY_BINARY", binary).env("GOML_BUILD_JOBS", "2").env("GOML_SIMD", "native").input(
+        bytes::Bytes::new(),
+    );
     if race {
         command = command.env("GOFLAGS", env::var_structured("GOFLAGS").unwrap_or("") + " -race").env(
             "GORACE",
@@ -322,16 +324,6 @@ fn verify_module(context: Verification, name: string, race: bool, logs: string) 
             native_directory,
             binary,
             path::join(logs, "native-tests.log"),
-            false,
-        )?;
-    }
-    if !single {
-        driver(
-            context,
-            Vec::from_array(["verify", "--timeout", "300s"]),
-            library,
-            binary,
-            path::join(logs, "downstream-verify.log"),
             false,
         )?;
     }

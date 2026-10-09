@@ -348,10 +348,10 @@ pub fn temporary_directory(parent: string) -> Result[string, string] {
 }
 
 fn registry_index(captured: Vec[CapturedModule]) -> string {
-    let mut index = "";
+    let mut index = "[modules]\n";
     for module in captured {
-        index += "[modules.\"ecosystem::" + module.name
-            + "\"]\nlatest = \"0.1.0\"\nversions = [\"0.1.0\"]\n\n";
+        index += "[modules.\"ecosystem::" + module.name + "\"]\npath = \"ecosystem/" + module.name
+            + "\"\n\n";
     }
     index
 }
@@ -360,7 +360,7 @@ fn write_snapshot(staged: string, captured: Vec[CapturedModule]) -> Result[(), s
     let registry = path::join(staged, "cache/registry");
     fs::create_dir_all(registry).map_err(|error| error.to_string())?;
     for module in captured {
-        let target = path::join(registry, "ecosystem/" + module.name + "/0.1.0");
+        let target = path::join(registry, "ecosystem/" + module.name);
         for file in module.files {
             let destination = path::join(target, file.name);
             fs::create_dir_all(path::parent(destination).unwrap_or(target)).map_err(
@@ -375,7 +375,7 @@ fn write_snapshot(staged: string, captured: Vec[CapturedModule]) -> Result[(), s
 }
 
 fn snapshot_digest(captured: Vec[CapturedModule]) -> string {
-    let mut digest = "goml-ecosystem-registry-v3\n";
+    let mut digest = "goml-ecosystem-registry-unversioned\n";
     for module in captured {
         for file in module.files {
             let name = module.name + "/" + file.name;
@@ -392,7 +392,6 @@ fn validate_snapshot(home: string, captured: Vec[CapturedModule]) -> Result[(), 
     }
     for module in captured {
         directories.push("cache/registry/ecosystem/" + module.name);
-        directories.push("cache/registry/ecosystem/" + module.name + "/0.1.0");
     }
     for relative in directories {
         let directory = path::join(home, relative);
@@ -413,7 +412,7 @@ fn validate_snapshot(home: string, captured: Vec[CapturedModule]) -> Result[(), 
     for module in captured {
         let files = Vec::new();
         capture_directory(
-            path::join(home, "cache/registry/ecosystem/" + module.name + "/0.1.0"),
+            path::join(home, "cache/registry/ecosystem/" + module.name),
             "",
             files,
             true,

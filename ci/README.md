@@ -16,6 +16,7 @@ Invalid checkouts fail without resetting or deleting local changes. The triggeri
 candidate remains exempt from dependency reuse checks.
 
 `toolchain.json` pins the published GoML Linux amd64 archive and its SHA-256.
+The unversioned snapshot format requires a compatible driver. Advance this pin to a published release containing that driver before rolling this runner out to sibling CI workflows; local validation can use `--goml /path/to/stage2/bin/goml`. Do not substitute unreleased archives for the pinned release.
 Installation verifies the archive before extraction and finalizes the toolchain
 with its own binaries. The runner uses Go 1.26 on Ubuntu 24.04. Native dependencies
 are downloaded explicitly before readonly GoML compilation, including manifests
@@ -34,11 +35,11 @@ missing DSN before running commands. PostgreSQL adapter tests and downstream
 fixtures use that real server; the Protocol Buffers Go oracle and OAuth 2.0
 HTTP/TLS fixtures are also included in normal and race checks.
 
-Library jobs run the existing format, test, independent downstream verification,
+Library jobs run the existing format, test, explicit downstream fixture,
 cached-build and smoke checks. Existing race, PTY, SIMD, protocol and reference
 checks remain enabled; SQL pool tests also run under the race detector.
 The Wasm interpreter replays its frozen official conformance fixtures in its
-conformance example tests, through both `goml test` and `goml verify`. The ordinary
+conformance example tests through `goml test`. The ordinary
 checks use GoML and retained fixtures; WABT is needed only when regenerating them.
 The verification and ecosystem catalog jobs run infrastructure regression tests,
 the verifier's own GoML tests, and module/dependency/catalog consistency checks.
@@ -95,5 +96,4 @@ python3 ci/workflows.py --libraries .. --revision FULL_VERIFICATION_COMMIT_SHA -
 
 Commit and push those workflow updates in each repository. Dependencies remain
 fixed until the shared inventory is deliberately updated. This CI checks isolated
-registry snapshots built from real GitHub checkouts; it does not publish immutable
-registry versions or claim that the private snapshot is a public registry.
+unversioned registry snapshots built from real GitHub checkouts. These local source snapshots use the same `path` index format as the driver and remain separate from the [central Git index](https://github.com/gomlang/registry).
