@@ -51,7 +51,19 @@ fn check_snapshot(home: string, one_source: string) -> () {
     );
     testing::assert_eq(modules.len(), 2);
     for name in Vec::from_array(["one", "two"]) {
-        let directory = path::join(registry, "ecosystem/" + name + "/0.1.0");
+        let entry = testing::expect_some(
+            toml::field(index, "modules").and_then(
+                |modules| toml::field(modules, "ecosystem::" + name),
+            ),
+            "module entry",
+        );
+        testing::assert(toml::field(entry, "latest").is_none());
+        testing::assert(toml::field(entry, "versions").is_none());
+        testing::assert(
+            toml::field(entry, "path").and_then(toml::as_string)
+                == Option::Some("ecosystem/" + name),
+        );
+        let directory = path::join(registry, "ecosystem/" + name);
         let source = testing::expect_ok(
             fs::read_file_structured(path::join(directory, "main.goml")),
             "captured source",
@@ -150,17 +162,17 @@ fn snapshot_follows_transitive_dev_and_nested_fixture_dependencies() -> () {
     write_manifest(
         root,
         "one",
-        "[module]\npath = \"ecosystem::one\"\n[dependencies]\n\"ecosystem::two\" = \"0.1.0\"\n",
+        "[module]\npath = \"ecosystem::one\"\n[dependencies]\n\"ecosystem::two\" = true\n",
     );
     write_manifest(
         root,
         "two",
-        "[module]\npath = \"ecosystem::two\"\n[dev-dependencies]\n\"ecosystem::one\" = \"0.1.0\"\n",
+        "[module]\npath = \"ecosystem::two\"\n[dev-dependencies]\n\"ecosystem::one\" = true\n",
     );
     write_manifest(
         root,
         "two/testdata/downstream/native",
-        "[module]\npath = \"downstream::native\"\n[dev-dependencies]\n\"ecosystem::three\" = \"0.1.0\"\n",
+        "[module]\npath = \"downstream::native\"\n[dev-dependencies]\n\"ecosystem::three\" = true\n",
     );
     write_manifest(root, "three", "[module]\npath = \"ecosystem::three\"\n");
     let home = testing::expect_ok(
@@ -172,9 +184,7 @@ fn snapshot_follows_transitive_dev_and_nested_fixture_dependencies() -> () {
             == Vec::from_array(["ecosystem::one", "ecosystem::three", "ecosystem::two"]),
     );
     testing::assert(
-        !fs::exists(
-            path::join(home, "cache/registry/ecosystem/two/0.1.0/testdata/downstream/native"),
-        ),
+        !fs::exists(path::join(home, "cache/registry/ecosystem/two/testdata/downstream/native")),
     );
     testing::assert_ok(fs::remove_dir_all(root));
 }
@@ -190,7 +200,7 @@ fn snapshot_reports_missing_selection_and_dependency_sources() -> () {
     write_manifest(
         root,
         "one/testdata/downstream/native",
-        "[dependencies]\n\"ecosystem::absent\" = \"0.1.0\"\n",
+        "[dependencies]\n\"ecosystem::absent\" = true\n",
     );
     let error = testing::expect_err(
         verify::registry_snapshot(root, root, Vec::from_array(["one"])),
@@ -210,7 +220,7 @@ fn consumer_selection_discovers_dependencies_without_publishing_consumer() -> ()
     write_manifest(
         root,
         "explorer",
-        "[module]\npath = \"example::explorer\"\n[dependencies]\n\"ecosystem::one\" = \"0.1.0\"\n",
+        "[module]\npath = \"example::explorer\"\n[dependencies]\n\"ecosystem::one\" = true\n",
     );
     let home = testing::expect_ok(
         verify::registry_snapshot(root, root, Vec::from_array(["explorer"])),
@@ -227,7 +237,7 @@ fn applications_cannot_satisfy_ecosystem_library_dependencies() -> () {
     write_manifest(
         root,
         "one",
-        "[module]\npath = \"ecosystem::one\"\n[dev-dependencies]\n\"ecosystem::explorer\" = \"0.1.0\"\n",
+        "[module]\npath = \"ecosystem::one\"\n[dev-dependencies]\n\"ecosystem::explorer\" = true\n",
     );
     for selected in Vec::from_array(
         [Vec::from_array(["one"]), Vec::from_array(["explorer", "one"])],
@@ -254,7 +264,7 @@ fn dependency_discovery_and_snapshot_exclude_generated_directories_and_symlinks(
     write_manifest(
         root,
         "one/testdata/downstream/native",
-        "[module]\npath = \"downstream::native\"\n[build]\ntarget-dir = \"generated\"\n[dependencies]\n\"ecosystem::two\" = \"0.1.0\"\n",
+        "[module]\npath = \"downstream::native\"\n[build]\ntarget-dir = \"generated\"\n[dependencies]\n\"ecosystem::two\" = true\n",
     );
     for relative in Vec::from_array(
         [
@@ -272,7 +282,7 @@ fn dependency_discovery_and_snapshot_exclude_generated_directories_and_symlinks(
     ) {
         write_manifest(root, "one/" + relative + "/ignored-manifest", "invalid generated TOML");
     }
-    write_manifest(root, "external", "[dependencies]\n\"ecosystem::missing\" = \"0.1.0\"\n");
+    write_manifest(root, "external", "[dependencies]\n\"ecosystem::missing\" = true\n");
     testing::assert_ok(
         fs::symbolic_link(path::join(root, "external"), path::join(root, "one/linked-directory")),
     );
@@ -294,7 +304,7 @@ fn dependency_discovery_and_snapshot_exclude_generated_directories_and_symlinks(
         "ignore generated and linked manifests",
     );
     testing::assert(snapshot_names(home) == Vec::from_array(["ecosystem::one", "ecosystem::two"]));
-    let directory = path::join(home, "cache/registry/ecosystem/one/0.1.0");
+    let directory = path::join(home, "cache/registry/ecosystem/one");
     testing::assert_eq(
         testing::expect_ok(
             fs::read_file_structured(path::join(directory, "linked-manifest/data.txt")),
@@ -345,7 +355,7 @@ fn dependency_discovery_rejects_unsafe_paths_and_linked_checkouts() -> () {
     write_manifest(
         root,
         "one",
-        "[module]\npath = \"ecosystem::one\"\n[dependencies]\n\"ecosystem::../outside\" = \"0.1.0\"\n",
+        "[module]\npath = \"ecosystem::one\"\n[dependencies]\n\"ecosystem::../outside\" = true\n",
     );
     let error = testing::expect_err(
         verify::registry_snapshot(root, root, Vec::from_array(["one"])),
@@ -457,7 +467,7 @@ fn changed_cached_registry_sources_are_rejected_without_overwriting_them() -> ()
             "capture modules",
         );
         let home = testing::expect_ok(verify::publish_snapshot(root, captured), "initial snapshot");
-        let directory = path::join(home, "cache/registry/ecosystem/one/0.1.0");
+        let directory = path::join(home, "cache/registry/ecosystem/one");
         let source = path::join(directory, "main.goml");
         match change {
             "edit" => testing::assert_ok(fs::write_file_structured(source, "changed source")),
@@ -514,7 +524,7 @@ fn generated_outputs_do_not_prevent_registry_reuse() -> () {
     );
     let home = testing::expect_ok(verify::publish_snapshot(root, captured), "initial snapshot");
     for relative in Vec::from_array(["_artifact/build", ".goml/cache"]) {
-        let directory = path::join(home, "cache/registry/ecosystem/one/0.1.0/" + relative);
+        let directory = path::join(home, "cache/registry/ecosystem/one/" + relative);
         testing::assert_ok(fs::create_dir_all(directory));
         testing::assert_ok(fs::write_file_structured(path::join(directory, "cache"), "generated"));
     }
@@ -541,7 +551,7 @@ fn registry_skips_symlinks_and_keeps_binary_sources() -> () {
         "capture binary data",
     );
     let home = testing::expect_ok(verify::publish_snapshot(root, captured), "publish binary data");
-    let target = path::join(home, "cache/registry/ecosystem/one/0.1.0");
+    let target = path::join(home, "cache/registry/ecosystem/one");
     testing::assert(
         testing::expect_ok(
             fs::read_bytes_structured(path::join(target, "raw.bin")),
@@ -570,9 +580,7 @@ fn registry_excludes_nested_downstream_module() -> () {
     );
     let home = testing::expect_ok(verify::publish_snapshot(root, captured), "publish snapshot");
     testing::assert(
-        !fs::exists(
-            path::join(home, "cache/registry/ecosystem/one/0.1.0/testdata/downstream/native"),
-        ),
+        !fs::exists(path::join(home, "cache/registry/ecosystem/one/testdata/downstream/native")),
     );
     testing::assert_ok(fs::remove_dir_all(root));
 }
@@ -690,7 +698,7 @@ fn report_records_failures_between_successful_commands() -> () {
         json::field(report, "commands").and_then(|value| json::as_array(value)),
         "recorded commands",
     );
-    testing::assert_eq(commands.len(), 4);
+    testing::assert_eq(commands.len(), 3);
     for command in commands {
         testing::assert_eq(
             json::field(command, "exit_code").and_then(|value| json::as_int(value)).unwrap_or(-1),
