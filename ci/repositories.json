@@ -24,7 +24,7 @@
     "kind": "library"
   },
   "bitflags": {
-    "revision": "276db3788a3055a52157ab20f3d85743459edec5",
+    "revision": "8c2f380ab107b3b5f187d5bb7b17e2ede0eba64a",
     "kind": "library"
   },
   "cache": {
@@ -32,7 +32,7 @@
     "kind": "library"
   },
   "cli": {
-    "revision": "0e824c2cfa4c3538abbff6708d3bb0f2e7578fa4",
+    "revision": "990381d9f1e4e7d53e635a342e46412e274a8d30",
     "kind": "library"
   },
   "color": {
@@ -76,7 +76,7 @@
     "kind": "library"
   },
   "ecosystem": {
-    "revision": "e93d82ce09f43de5f4be5e3ca0417435e130ad1a",
+    "revision": "3d7c2949dbb9b0a176ebe9e98dd632ad80a20b04",
     "kind": "catalog"
   },
   "explorer": {
@@ -104,7 +104,7 @@
     "kind": "library"
   },
   "highlight": {
-    "revision": "a385c2232958839b2696a3bfe6d3d251770e813d",
+    "revision": "328158e9c8d7055b1cdf0aa6be3a21b9becd5dc7",
     "kind": "library"
   },
   "html": {
@@ -135,8 +135,8 @@
     "revision": "844dac913f5e7410fe699a20dda6f15c9426e96b",
     "kind": "library"
   },
-  "logos": {
-    "revision": "4e3474fc6174f10a899f79d6b7abb602ca1420cf",
+  "lexer": {
+    "revision": "2fc3df824da4a3cd305cfd4188422773254bedd3",
     "kind": "library"
   },
   "lsp": {
@@ -236,7 +236,7 @@
     "kind": "library"
   },
   "syntax": {
-    "revision": "a9036dd0468234cc7b4b792e97ff143715bf0c32",
+    "revision": "6c578408a17bd75fad463274e16fffc4290ed58e",
     "kind": "library"
   },
   "tabwriter": {

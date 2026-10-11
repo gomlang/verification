@@ -175,7 +175,7 @@ fn race_enabled(name: string) -> bool {
             "request",
             "llvm",
             "rope",
-            "logos",
+            "lexer",
             "regexp",
             "tracing",
             "web",
