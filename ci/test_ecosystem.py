@@ -274,6 +274,40 @@ class InfrastructureTests(unittest.TestCase):
             self.assertEqual(call.kwargs["env"]["GOML_POSTGRES_TEST_DSN"], dsn)
         self.assertEqual(run.call_args.args[0][-1], "postgres")
 
+    def test_source_revision_is_validated_before_checkout(self):
+        config = self.root / "toolchain.json"
+        config.write_text(json.dumps({"source_revision": "main"}))
+        with patch.object(ecosystem, "run") as run:
+            with self.assertRaisesRegex(ValueError, "full commit SHA"):
+                ecosystem.install(self.root / "prefix", config)
+        run.assert_not_called()
+
+    def test_source_install_finalizes_built_binaries_and_records_revision(self):
+        config = self.root / "toolchain.json"
+        revision = "b" * 40
+        config.write_text(json.dumps({"source_revision": revision}))
+        prefix = self.root / "prefix"
+        def checkout(root, name, selected):
+            self.assertEqual((name, selected), ("goml", revision))
+            for project, names in (("gomlc", ("gomlc", "gomlfmt", "gomldoc", "gomllsp")),
+                                   ("goml", ("goml",))):
+                for name in names:
+                    binary = root / "goml" / project / f"_bootstrap/stage2/bin/cmd/{name}/{name}"
+                    binary.parent.mkdir(parents=True, exist_ok=True)
+                    binary.write_text("built " + name)
+        def run(arguments, **kwargs):
+            if "tools/goml-go-meta/build.sh" in arguments:
+                (prefix / "bin").mkdir(parents=True)
+            if "tools/lib/finalize-toolchain.sh" in arguments:
+                self.assertEqual((prefix / "bin/goml").read_text(), "built goml")
+                self.assertEqual((prefix / "bin/gomlc").read_text(), "built gomlc")
+        with patch.object(ecosystem, "checkout", side_effect=checkout), \
+                patch.object(ecosystem, "install_release") as released, \
+                patch.object(ecosystem, "run", side_effect=run):
+            ecosystem.install(prefix, config)
+        self.assertEqual(released.call_args.args[0].name, "stage0")
+        self.assertEqual((prefix / "source-revision").read_text(), revision + "\n")
+
     def test_checksum_failure_prevents_toolchain_execution(self):
         config = self.root / "toolchain.json"
         config.write_text(json.dumps({"version": "0.1.57", "sha256": "a" * 64}))

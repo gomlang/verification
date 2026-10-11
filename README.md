@@ -4,7 +4,7 @@ This standalone GoML repository owns the local ecosystem test runner, atomic pri
 registry snapshots, race and SIMD checks, and Linux PTY sessions. The
 `reference` package supplies test fixture decoding, structural JSON comparisons
 and an independent VT screen model. It depends only on the standard library.
-Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The eight native fixtures in bench, llvm, postgres, redis, sql, sqlite, web and yaml retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. Go 1.26+ and a GoML driver supporting the unversioned registry index are required. The recipes default to `../../goml-dev/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects an installed release for both building and running the verifier.
+Libraries are sibling repositories in `~/git/gomlang/` by default. Ordinary examples live inside each library at `examples/<name>/`, sharing its root manifest and `[dev-dependencies]`. The eight native fixtures in bench, llvm, postgres, redis, sql, sqlite, web and yaml retain independent modules under `testdata/downstream/native/`. Set `GOMLANG_LIBRARIES` to select another library directory. Source files use `.goml`. Go 1.26+ and a GoML driver supporting the unversioned registry index are required. The recipes default to `../../goml/stage2/bin/goml`; `GOML=/absolute/path/to/goml` selects a compatible toolchain for both building and running the verifier.
 
 `GOMLANG_LIBRARIES` and `--goml` accept relative or absolute paths with filesystem
 resolution of symbolic links and `..`. Missing or non-directory components in
@@ -88,17 +88,17 @@ README for prerequisites.
 Reference fixtures are stored as gzip streams in one `.gz` file or sequential
 `.gz.0`, `.gz.1`, ... chunks; the test loader requires `gzip` on `PATH`.
 
-For ordinary package development, the default central index is [gomlang/registry](https://github.com/gomlang/registry). Declare dependencies with `true`, run `goml update`, then use `goml test` or `goml run --example <name>`. The private snapshots below are for testing selected working checkouts without changing the user's registry cache. They require a GoML driver supporting the unversioned index format; use the updated development toolchain until a compatible release is published.
+For ordinary package development, the default central index is [gomlang/registry](https://github.com/gomlang/registry). Declare dependencies with `true`, run `goml update`, then use `goml test` or `goml run --example <name>`. The private snapshots below are for testing selected working checkouts without changing the user's registry cache. They require a GoML driver supporting the unversioned index format; use the source revision pinned in `ci/toolchain.json` until a compatible release is published.
 
 To run an individual example manually, first build this runner and obtain its
 private registry path:
 
 ```sh
-../../goml-dev/stage2/bin/goml build
+../../goml/stage2/bin/goml build
 export GOML_HOME="$(_artifact/bin/verification --registry-only color)"
 cd ../color
-../../goml-dev/stage2/bin/goml run --example basic
-../../goml-dev/stage2/bin/goml test
+../../goml/stage2/bin/goml run --example basic
+../../goml/stage2/bin/goml test
 ```
 
 The runner supplies `GOML_VERIFY_ROOT`, `GOML_VERIFY_DRIVER` and
@@ -124,11 +124,11 @@ model tests also check fragmented terminal sequences, erased password history
 and cleanup when starting a PTY child fails:
 
 ```sh
-../../goml-dev/stage2/bin/goml test
+../../goml/stage2/bin/goml test
 ```
 
 Every ecosystem repository also runs these checks through GitHub Actions. The
-shared [CI configuration](ci/README.md) pins the released toolchain and sibling
+shared [CI configuration](ci/README.md) pins the source-built toolchain and sibling
 repository revisions, preserves the triggering candidate, installs native test
 dependencies, and retains failure logs. Verification and catalog repositories
 run their own infrastructure and consistency checks.

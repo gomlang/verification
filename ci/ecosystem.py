@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -103,7 +104,7 @@ def prepare(root, module, records):
     print(f"Prepared {len(resolved)} repositories; candidate {module} at {resolved[module]}", flush=True)
 
 
-def install(prefix, file=CI / "toolchain.json"):
+def install_release(prefix, file=CI / "toolchain.json"):
     config = json.loads(file.read_text())
     version, checksum = config["version"], config["sha256"]
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
@@ -123,6 +124,39 @@ def install(prefix, file=CI / "toolchain.json"):
         run(["tar", "-xzf", archive, "--strip-components=1", "-C", prefix])
     run([prefix / "bin/goml", "__toolchain-finalize", "--prefix", prefix])
     run([prefix / "bin/goml", "version"])
+
+
+def install(prefix, file=CI / "toolchain.json"):
+    prefix = prefix.resolve()
+    config = json.loads(file.read_text(), object_pairs_hook=unique_object)
+    revision = config.get("source_revision")
+    if revision is None:
+        install_release(prefix, file)
+        return
+    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError("toolchain source requires a full commit SHA")
+    if prefix.exists():
+        raise ValueError(f"toolchain destination already exists: {prefix}")
+    with tempfile.TemporaryDirectory(prefix="goml-bootstrap-") as temporary:
+        root = Path(temporary)
+        checkout(root, "goml", revision)
+        source = root / "goml"
+        install_release(source / "stage0", file)
+        # The pinned source's `just make` stages, without requiring just on CI.
+        run(["bash", "tools/goml-go-meta/build.sh", prefix], cwd=source)
+        run(["bash", "bootstrap/build-stage.sh", "stage2", "stage0/bin/goml",
+             "stage0/bin/gomlc"], cwd=source)
+        for name in ("gomlc", "gomlfmt", "gomldoc", "gomllsp"):
+            shutil.copy2(source / f"gomlc/_bootstrap/stage2/bin/cmd/{name}/{name}",
+                         prefix / "bin" / name)
+        shutil.copy2(source / "goml/_bootstrap/stage2/bin/cmd/goml/goml",
+                     prefix / "bin/goml")
+        run(["bash", "tools/lib/install.sh", prefix], cwd=source)
+        run(["bash", "tools/lib/finalize-toolchain.sh", prefix, prefix / "bin/goml",
+             prefix / "bin/gomlc"], cwd=source)
+    (prefix / "source-revision").write_text(revision + "\n")
+    run([prefix / "bin/goml", "version"])
+    print(f"Built GoML source revision {revision}", flush=True)
 
 
 def read_toml(path):

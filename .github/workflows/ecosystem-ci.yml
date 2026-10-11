@@ -69,7 +69,7 @@ jobs:
         run: bash libraries/verification/ci/install-native.sh "$MODULE"
         env:
           MODULE: ${{ inputs.module }}
-      - name: Install released GoML
+      - name: Bootstrap pinned GoML source
         run: python3 libraries/verification/ci/ecosystem.py install --prefix "$TOOLCHAIN_PREFIX"
         env:
           TOOLCHAIN_PREFIX: ${{ runner.temp }}/goml

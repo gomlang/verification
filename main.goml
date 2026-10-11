@@ -19,7 +19,9 @@ pub fn parse_options(arguments: Vec[string], root: string) -> Result[Options, st
     let checkout = path::parent(path::parent(root).unwrap_or(root)).unwrap_or(root);
     let mut options = Options {
         selected: Vec::new(),
-        goml: path::join(checkout, "goml-dev/stage2/bin/goml"),
+        goml: absolute_input_path(
+            env::var_structured("GOML").unwrap_or(path::join(checkout, "goml/stage2/bin/goml")),
+        )?,
         registry_only: false,
         race: true,
         list: false,

@@ -15,10 +15,14 @@ with no staged, modified or untracked files; ignored build artifacts are preserv
 Invalid checkouts fail without resetting or deleting local changes. The triggering
 candidate remains exempt from dependency reuse checks.
 
-`toolchain.json` pins the published GoML Linux amd64 archive and its SHA-256.
-The unversioned snapshot format requires a compatible driver. Advance this pin to a published release containing that driver before rolling this runner out to sibling CI workflows; local validation can use `--goml /path/to/stage2/bin/goml`. Do not substitute unreleased archives for the pinned release.
-Installation verifies the archive before extraction and finalizes the toolchain
-with its own binaries. The runner uses Go 1.26 on Ubuntu 24.04. Native dependencies
+`toolchain.json` pins both the published GoML Linux amd64 stage0 archive with
+its SHA-256 and the full compiler/driver source revision. Installation verifies
+and finalizes the released stage0, builds the pinned source using the upstream
+bootstrap scripts, then installs and finalizes the resulting toolchain. The
+installed `source-revision` file records its identity. This is a source-built
+development toolchain: the unversioned registry index requires driver changes
+newer than release 0.1.59. No unreleased archive is used as stage0.
+The runner uses Go 1.26 on Ubuntu 24.04. Native dependencies
 are downloaded explicitly before readonly GoML compilation, including manifests
 in transitive dependencies, named examples and downstream fixture modules.
 Discovery skips generated directories and symbolic links; failures stop the job.
@@ -76,7 +80,9 @@ same branch or pull request are cancelled.
 Update the relevant full commit SHA in `repositories.json` when adopting a new
 dependency baseline. A repository's own CI always tests its triggering candidate,
 even if its inventory entry still names an earlier baseline. Changes to the
-released toolchain require the official archive checksum in `toolchain.json`.
+stage0 require the official archive checksum in `toolchain.json`.
+Advance `source_revision` to a published full commit SHA when adopting new
+compiler or driver changes; validate a clean bootstrap before rollout.
 
 Run the infrastructure checks from this repository:
 
