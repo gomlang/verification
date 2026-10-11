@@ -1,3 +1,17 @@
+# Archived: GoML verification
+
+This repository is retained for historical consumers and pinned CI references.
+Active development has moved to:
+
+- [gomlang/workflows](https://github.com/gomlang/workflows): shared GitHub Actions, toolchain bootstrap, and ecosystem verification runner.
+- [gomlang/testkit](https://github.com/gomlang/testkit): reusable test fixtures, JSON assertions, subprocess checks, and terminal reference models.
+
+New libraries should use `ecosystem::testkit` as a development dependency and
+call the shared workflow in `gomlang/workflows`. The implementation below is
+frozen for compatibility; use the new repositories for current instructions.
+
+---
+
 # Native ecosystem verification
 
 This standalone GoML repository owns the local ecosystem test runner, atomic private
