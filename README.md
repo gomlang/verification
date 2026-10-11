@@ -36,6 +36,17 @@ tests where applicable. Native Go unit tests also run without the race detector,
 including the HTML, image, YAML and JWT adapters. UUID generation and S3 client
 tests participate in the race pass. `--no-race` explicitly skips this additional pass.
 
+The local runner does not fetch native Go dependencies. Before verifying a module
+with native adapters, run from this repository:
+
+```sh
+python3 ci/ecosystem.py native --libraries .. --module sqlite
+```
+
+Replace `sqlite` with the selected module. The command downloads Go dependencies
+for the selected module and its transitive dependencies, including examples and
+native fixtures. CI runs this preparation as a separate step before verification.
+
 PostgreSQL verification needs a running PostgreSQL 16 server and
 `GOML_POSTGRES_TEST_DSN`, shared by the library, native adapter and downstream
 fixture tests. The CI job provides a dedicated service with a random host port.
